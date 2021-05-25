@@ -5,6 +5,12 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import jdk.internal.util.xml.impl.Input;
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -17,6 +23,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -32,6 +39,7 @@ public class SeaweedClient {
     private final boolean ssl;
     private final ExecutorService pool;
     private final Gson gson;
+    private final OkHttpClient client;
 
     private SeaweedClient(String host, int port, boolean ssl, int poolSize) {
         this.host = host;
@@ -41,6 +49,7 @@ public class SeaweedClient {
                 60L, TimeUnit.SECONDS,
                 new SynchronousQueue<>());
         this.gson = new Gson();
+        this.client = new OkHttpClient();
     }
 
     public CompletableFuture<WriteFileResponse> writeFile(Path path) {
@@ -54,26 +63,22 @@ public class SeaweedClient {
                 StringBuilder sb = new StringBuilder(this.buildBaseString());
                 sb.append("/");
                 sb.append(fid);
-                URL url = new URL(sb.toString());
-                HttpURLConnection con = (HttpURLConnection) url.openConnection();
-                con.setRequestMethod("POST");
-                con.setRequestProperty("Connection", "Keep-Alive");
-                String boundary = UUID.randomUUID().toString() + "*";
-                con.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
-                con.setConnectTimeout(5000);
-                con.setReadTimeout(5000);
-
-                //Write output here
-
-
-                InputStream inputStream = new BufferedInputStream(con.getInputStream());
-                BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-                String json = reader.readLine();
-                JsonObject jsonObj = this.gson.fromJson(json, JsonObject.class);
-                String fileName = jsonObj.get("name").getAsString();
-                long fileSize = jsonObj.get("size").getAsLong();
-                String eTag = jsonObj.get("etag").getAsString();
-                return new WriteFileResponse(fid, fileName, fileSize, eTag);
+                MediaType type = MediaType.parse(Files.probeContentType(file.toPath()));
+                RequestBody body = new MultipartBody.Builder()
+                        .addFormDataPart("file", file.getName(), RequestBody.create(file, type))
+                        .setType(MultipartBody.FORM)
+                        .build();
+                Request request = new Request.Builder()
+                        .post(body)
+                        .build();
+                try(Response response = this.client.newCall(request).execute()) {
+                    String json = response.body().string();
+                    JsonObject jsonObj = this.gson.fromJson(json, JsonObject.class);
+                    String fileName = jsonObj.get("name").getAsString();
+                    long fileSize = jsonObj.get("size").getAsLong();
+                    String eTag = jsonObj.get("etag").getAsString();
+                    return new WriteFileResponse(fid, fileName, fileSize, eTag);
+                }
             } catch(IOException e) {
                 e.printStackTrace();
                 return null;
@@ -81,21 +86,15 @@ public class SeaweedClient {
         }, this.pool);
     }
 
-    private String createFid() throws MalformedURLException {
-        try {
-            StringBuilder sb = new StringBuilder(this.buildBaseString());
-            sb.append("/dir/assign");
-            URL url = new URL(sb.toString());
-            HttpURLConnection con = (HttpURLConnection) url.openConnection();
-            con.setRequestMethod("POST");
-            con.setConnectTimeout(5000);
-            con.setReadTimeout(5000);
-            InputStream inputStream = new BufferedInputStream(con.getInputStream());
-            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-            String json = reader.readLine();
-            JsonObject jsonObj = this.gson.fromJson(json, JsonObject.class);
-            reader.close();
-            inputStream.close();
+    private String createFid() {
+        StringBuilder sb = new StringBuilder(this.buildBaseString());
+        sb.append("/dir/assign");
+        Request request = new Request.Builder()
+                .url(sb.toString())
+                .get()
+                .build();
+        try(Response response = this.client.newCall(request).execute()){
+            JsonObject jsonObj = this.gson.fromJson(response.body().string(), JsonObject.class);
             JsonElement fid = jsonObj.get("fid");
             if(fid == null) {
                 return null;
@@ -121,12 +120,9 @@ public class SeaweedClient {
         return sb.toString();
     }
 
-    //Create fid
-    //https://github.com/chrislusf/seaweedfs#write-file
+    //Update file
 
     //Read file
-
-    //Write file - Return fid string
 
     //Delete file
 
