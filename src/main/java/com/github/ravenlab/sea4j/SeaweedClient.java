@@ -24,7 +24,14 @@ public class SeaweedClient {
         return this.ssl;
     }
 
-    
+    //Create fid
+    //https://github.com/chrislusf/seaweedfs#write-file
+
+    //Read file
+
+    //Write file - Return fid string
+
+    //Delete file
 
     public static class Builder {
 
