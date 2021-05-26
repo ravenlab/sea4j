@@ -41,10 +41,6 @@ public class SeaweedClient {
         this.client = new OkHttpClient();
     }
 
-    public CompletableFuture<WriteFileResponse> writeFile(Path path) {
-        return this.writeFile(path.toFile());
-    }
-
     public CompletableFuture<WriteFileResponse> writeFile(File file) {
         return CompletableFuture.supplyAsync(() -> {
             try {
