@@ -159,8 +159,6 @@ public class SeaweedClient {
         return sb.toString();
     }
 
-    //Delete file
-
     public static class Builder {
 
         private String host = null;
