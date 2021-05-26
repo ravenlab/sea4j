@@ -133,13 +133,14 @@ public class SeaweedClient {
                 .get()
                 .build();
         try(Response response = this.client.newCall(request).execute()){
-            JsonObject jsonObj = this.gson.fromJson(response.body().string(), JsonObject.class);
+            String json = Objects.requireNonNull(response.body()).string();
+            JsonObject jsonObj = this.gson.fromJson(json, JsonObject.class);
             JsonElement fid = jsonObj.get("fid");
             if(fid == null) {
                 return null;
             }
             return fid.getAsString();
-        } catch(IOException e) {
+        } catch(IOException | NullPointerException e) {
             e.printStackTrace();
             return null;
         }
