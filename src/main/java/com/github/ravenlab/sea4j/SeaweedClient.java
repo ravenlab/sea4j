@@ -70,6 +70,24 @@ public class SeaweedClient {
         return CompletableFuture.supplyAsync(() -> this.sendFile(file, fid));
     }
 
+    public CompletableFuture<String> deleteFile(String fid) {
+        return CompletableFuture.supplyAsync(() -> {
+            StringBuilder sb = new StringBuilder(this.buildBaseString());
+            sb.append("/");
+            sb.append(fid);
+            Request request = new Request.Builder()
+                    .url(sb.toString())
+                    .delete()
+                    .build();
+            try(Response response = this.client.newCall(request).execute()) {
+                return response.message();
+            } catch(IOException e) {
+                e.printStackTrace();
+                return null;
+            }
+        });
+    }
+
     private FileUpdateResponse sendFile(File file, String fid) {
         try {
             StringBuilder sb = new StringBuilder(this.buildBaseString());
@@ -140,8 +158,6 @@ public class SeaweedClient {
         sb.append(this.port);
         return sb.toString();
     }
-
-    //Read file
 
     //Delete file
 
