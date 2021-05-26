@@ -14,6 +14,7 @@ import okhttp3.Response;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.SynchronousQueue;
@@ -40,6 +41,24 @@ public class SeaweedClient {
         this.client = new OkHttpClient();
     }
 
+    public CompletableFuture<byte[]> readFile(String fid) {
+        return CompletableFuture.supplyAsync(() -> {
+            StringBuilder sb = new StringBuilder(this.buildBaseString());
+            sb.append("/");
+            sb.append(fid);
+            Request request = new Request.Builder()
+                    .url(sb.toString())
+                    .get()
+                    .build();
+            try(Response response = this.client.newCall(request).execute()) {
+                return Objects.requireNonNull(response.body()).bytes();
+            } catch(IOException | NullPointerException e) {
+                e.printStackTrace();
+                return new byte[0];
+            }
+        }, this.pool);
+    }
+
     public CompletableFuture<FileUpdateResponse> writeFile(File file) {
         return CompletableFuture.supplyAsync(() -> {
             String fid = this.createFid();
@@ -58,14 +77,14 @@ public class SeaweedClient {
             sb.append(fid);
             Request request = this.buildFileRequest(sb.toString(), file);
             try(Response response = this.client.newCall(request).execute()) {
-                String json = response.body().string();
+                String json = Objects.requireNonNull(response.body()).string();
                 JsonObject jsonObj = this.gson.fromJson(json, JsonObject.class);
                 String fileName = jsonObj.get("name").getAsString();
                 long fileSize = jsonObj.get("size").getAsLong();
                 String eTag = jsonObj.get("etag").getAsString();
                 return new FileUpdateResponse(fid, fileName, fileSize, eTag);
             }
-        } catch(IOException e) {
+        } catch(IOException | NullPointerException e) {
             e.printStackTrace();
             return null;
         }
@@ -121,8 +140,6 @@ public class SeaweedClient {
         sb.append(this.port);
         return sb.toString();
     }
-
-    //Update file
 
     //Read file
 
