@@ -1,6 +1,6 @@
 package com.github.ravenlab.sea4j;
 
-import com.github.ravenlab.sea4j.response.WriteFileResponse;
+import com.github.ravenlab.sea4j.response.FileUpdateResponse;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -14,7 +14,6 @@ import okhttp3.Response;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.SynchronousQueue;
@@ -41,34 +40,52 @@ public class SeaweedClient {
         this.client = new OkHttpClient();
     }
 
-    public CompletableFuture<WriteFileResponse> writeFile(File file) {
+    public CompletableFuture<FileUpdateResponse> writeFile(File file) {
         return CompletableFuture.supplyAsync(() -> {
-            try {
-                String fid = this.createFid();
-                StringBuilder sb = new StringBuilder(this.buildBaseString());
-                sb.append("/");
-                sb.append(fid);
-                MediaType type = MediaType.parse(Files.probeContentType(file.toPath()));
-                RequestBody body = new MultipartBody.Builder()
-                        .addFormDataPart("file", file.getName(), RequestBody.create(file, type))
-                        .setType(MultipartBody.FORM)
-                        .build();
-                Request request = new Request.Builder()
-                        .post(body)
-                        .build();
-                try(Response response = this.client.newCall(request).execute()) {
-                    String json = response.body().string();
-                    JsonObject jsonObj = this.gson.fromJson(json, JsonObject.class);
-                    String fileName = jsonObj.get("name").getAsString();
-                    long fileSize = jsonObj.get("size").getAsLong();
-                    String eTag = jsonObj.get("etag").getAsString();
-                    return new WriteFileResponse(fid, fileName, fileSize, eTag);
-                }
-            } catch(IOException e) {
-                e.printStackTrace();
-                return null;
-            }
+            String fid = this.createFid();
+            return this.sendFile(file, fid);
         }, this.pool);
+    }
+
+    public CompletableFuture<FileUpdateResponse> updateFile(File file, String fid) {
+        return CompletableFuture.supplyAsync(() -> this.sendFile(file, fid));
+    }
+
+    private FileUpdateResponse sendFile(File file, String fid) {
+        try {
+            StringBuilder sb = new StringBuilder(this.buildBaseString());
+            sb.append("/");
+            sb.append(fid);
+            Request request = this.buildFileRequest(sb.toString(), file);
+            try(Response response = this.client.newCall(request).execute()) {
+                String json = response.body().string();
+                JsonObject jsonObj = this.gson.fromJson(json, JsonObject.class);
+                String fileName = jsonObj.get("name").getAsString();
+                long fileSize = jsonObj.get("size").getAsLong();
+                String eTag = jsonObj.get("etag").getAsString();
+                return new FileUpdateResponse(fid, fileName, fileSize, eTag);
+            }
+        } catch(IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private Request buildFileRequest(String url, File file) {
+        try {
+            MediaType type = MediaType.parse(Files.probeContentType(file.toPath()));
+            RequestBody body = new MultipartBody.Builder()
+                    .addFormDataPart("file", file.getName(), RequestBody.create(file, type))
+                    .setType(MultipartBody.FORM)
+                    .build();
+            return new Request.Builder()
+                    .url(url)
+                    .post(body)
+                    .build();
+        } catch(IOException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     private String createFid() {
