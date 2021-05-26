@@ -1,6 +1,6 @@
 package com.github.ravenlab.sea4j;
 
-import com.github.ravenlab.sea4j.response.FileUpdateResponse;
+import com.github.ravenlab.sea4j.response.FileResponse;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -59,14 +59,14 @@ public class SeaweedClient {
         }, this.pool);
     }
 
-    public CompletableFuture<FileUpdateResponse> writeFile(File file) {
+    public CompletableFuture<FileResponse> writeFile(File file) {
         return CompletableFuture.supplyAsync(() -> {
             String fid = this.createFid();
             return this.sendFile(file, fid);
         }, this.pool);
     }
 
-    public CompletableFuture<FileUpdateResponse> updateFile(File file, String fid) {
+    public CompletableFuture<FileResponse> updateFile(File file, String fid) {
         return CompletableFuture.supplyAsync(() -> this.sendFile(file, fid));
     }
 
@@ -88,7 +88,7 @@ public class SeaweedClient {
         });
     }
 
-    private FileUpdateResponse sendFile(File file, String fid) {
+    private FileResponse sendFile(File file, String fid) {
         try {
             StringBuilder sb = new StringBuilder(this.buildBaseString());
             sb.append("/");
@@ -100,7 +100,7 @@ public class SeaweedClient {
                 String fileName = jsonObj.get("name").getAsString();
                 long fileSize = jsonObj.get("size").getAsLong();
                 String eTag = jsonObj.get("etag").getAsString();
-                return new FileUpdateResponse(fid, fileName, fileSize, eTag);
+                return new FileResponse(fid, fileName, fileSize, eTag);
             }
         } catch(IOException | NullPointerException e) {
             e.printStackTrace();
