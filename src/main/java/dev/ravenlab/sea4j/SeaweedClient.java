@@ -1,9 +1,10 @@
 package dev.ravenlab.sea4j;
 
+import dev.ravenlab.sea4j.response.FidResponse;
 import dev.ravenlab.sea4j.response.FileResponse;
 import com.google.gson.Gson;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import dev.ravenlab.sea4j.response.VolumeLookupResponse;
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
@@ -23,16 +24,16 @@ import java.util.concurrent.TimeUnit;
 
 public class SeaweedClient {
 
-    private final String host;
-    private final int port;
+    private final String masterHost;
+    private final int masterPort;
     private final boolean ssl;
     private final ExecutorService pool;
     private final Gson gson;
     private final OkHttpClient client;
 
-    private SeaweedClient(String host, int port, boolean ssl, int poolSize) {
-        this.host = host;
-        this.port = port;
+    private SeaweedClient(String masterHost, int masterPort, boolean ssl, int poolSize) {
+        this.masterHost = masterHost;
+        this.masterPort = masterPort;
         this.ssl = ssl;
         this.pool = new ThreadPoolExecutor(0, poolSize,
                 60L, TimeUnit.SECONDS,
@@ -43,7 +44,8 @@ public class SeaweedClient {
 
     public CompletableFuture<byte[]> readFile(String fid) {
         return CompletableFuture.supplyAsync(() -> {
-            StringBuilder sb = new StringBuilder(this.buildBaseString());
+            VolumeLookupResponse lookup = this.lookupVolume(fid);
+            StringBuilder sb = new StringBuilder(this.buildBaseString(lookup.getUrl()));
             sb.append("/");
             sb.append(fid);
             Request request = new Request.Builder()
@@ -61,18 +63,22 @@ public class SeaweedClient {
 
     public CompletableFuture<FileResponse> writeFile(File file) {
         return CompletableFuture.supplyAsync(() -> {
-            String fid = this.createFid();
-            return this.sendFile(file, fid);
+            FidResponse fid = this.createFid();
+            return this.sendFile(file, fid.getUrl(), fid.getFid());
         }, this.pool);
     }
 
     public CompletableFuture<FileResponse> updateFile(File file, String fid) {
-        return CompletableFuture.supplyAsync(() -> this.sendFile(file, fid));
+        return CompletableFuture.supplyAsync(() -> {
+            VolumeLookupResponse lookup = this.lookupVolume(fid);
+            return this.sendFile(file, lookup.getUrl(), fid);
+        });
     }
 
     public CompletableFuture<String> deleteFile(String fid) {
         return CompletableFuture.supplyAsync(() -> {
-            StringBuilder sb = new StringBuilder(this.buildBaseString());
+            VolumeLookupResponse lookup = this.lookupVolume(fid);
+            StringBuilder sb = new StringBuilder(this.buildBaseString(lookup.getUrl()));
             sb.append("/");
             sb.append(fid);
             Request request = new Request.Builder()
@@ -88,9 +94,9 @@ public class SeaweedClient {
         });
     }
 
-    private FileResponse sendFile(File file, String fid) {
+    private FileResponse sendFile(File file, String hostAndPort, String fid) {
         try {
-            StringBuilder sb = new StringBuilder(this.buildBaseString());
+            StringBuilder sb = new StringBuilder(this.buildBaseString(hostAndPort));
             sb.append("/");
             sb.append(fid);
             Request request = this.buildFileRequest(sb.toString(), file);
@@ -104,6 +110,35 @@ public class SeaweedClient {
             }
         } catch(IOException | NullPointerException e) {
             e.printStackTrace();
+            return null;
+        }
+    }
+
+    private VolumeLookupResponse lookupVolume(String fid) {
+        if(fid == null) {
+            return null;
+        } else if(!fid.contains(",")) {
+            return null;
+        }
+        String[] split = fid.split(",");
+        try {
+            int volumeId = Integer.parseInt(split[0]);
+            StringBuilder sb = new StringBuilder(this.buildBaseString(this.masterHost, this.masterPort));
+            sb.append("/dir/lookup?volumeId=");
+            sb.append(volumeId);
+            Request request = new Request.Builder()
+                    .url(sb.toString())
+                    .get()
+                    .build();
+            try(Response response = this.client.newCall(request).execute()) {
+                String json = response.body().string();
+                JsonObject obj = this.gson.fromJson(json, JsonObject.class);
+                int lookupId = obj.get("volumeId").getAsInt();
+                JsonObject locations = obj.get("locations").getAsJsonObject();
+                String url = locations.get("url").getAsString();
+                return new VolumeLookupResponse(lookupId, url);
+            }
+        } catch(NumberFormatException | IOException ex) {
             return null;
         }
     }
@@ -125,8 +160,8 @@ public class SeaweedClient {
         }
     }
 
-    private String createFid() {
-        StringBuilder sb = new StringBuilder(this.buildBaseString());
+    private FidResponse createFid() {
+        StringBuilder sb = new StringBuilder(this.buildBaseString(this.masterHost, this.masterPort));
         sb.append("/dir/assign");
         Request request = new Request.Builder()
                 .url(sb.toString())
@@ -134,19 +169,18 @@ public class SeaweedClient {
                 .build();
         try(Response response = this.client.newCall(request).execute()){
             String json = Objects.requireNonNull(response.body()).string();
-            JsonObject jsonObj = this.gson.fromJson(json, JsonObject.class);
-            JsonElement fid = jsonObj.get("fid");
-            if(fid == null) {
-                return null;
-            }
-            return fid.getAsString();
+            return this.gson.fromJson(json, FidResponse.class);
         } catch(IOException | NullPointerException e) {
             e.printStackTrace();
             return null;
         }
     }
 
-    private String buildBaseString() {
+    private String buildBaseString(String host, int port) {
+        return this.buildBaseString(host + ":" + port);
+    }
+
+    private String buildBaseString(String hostAndPort) {
         StringBuilder sb = new StringBuilder();
         String protocol = "http";
         if(ssl) {
@@ -154,26 +188,26 @@ public class SeaweedClient {
         }
         sb.append(protocol);
         sb.append("://");
-        sb.append(this.host);
-        sb.append(":");
-        sb.append(this.port);
+        sb.append(hostAndPort);
         return sb.toString();
     }
 
     public static class Builder {
 
-        private String host = null;
-        private int port = -1;
+        private String masterHost = null;
+        private int masterPort = -1;
+        private String volumeHost = null;
+        private int volumePort = -1;
         private boolean ssl = false;
         private int poolSize = Integer.MAX_VALUE;
 
-        public Builder host(String host) {
-            this.host = host;
+        public Builder masterHost(String host) {
+            this.masterHost = host;
             return this;
         }
 
-        public Builder port(int port) {
-            this.port = port;
+        public Builder masterPort(int port) {
+            this.masterPort = port;
             return this;
         }
 
@@ -189,7 +223,7 @@ public class SeaweedClient {
 
         public SeaweedClient build() {
             //TODO - throw exception if < 1 || host is null
-            return new SeaweedClient(this.host, this.port, this.ssl, this.poolSize);
+            return new SeaweedClient(this.masterHost, this.masterPort, this.ssl, this.poolSize);
         }
     }
 }
