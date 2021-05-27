@@ -45,11 +45,9 @@ public class SeaweedClient {
     public CompletableFuture<byte[]> readFile(String fid) {
         return CompletableFuture.supplyAsync(() -> {
             VolumeLookupResponse lookup = this.lookupVolume(fid);
-            StringBuilder sb = new StringBuilder(this.buildBaseString(lookup.getUrl()));
-            sb.append("/");
-            sb.append(fid);
+            String url = this.buildBaseString(lookup.getUrl()) + "/" + fid;
             Request request = new Request.Builder()
-                    .url(sb.toString())
+                    .url(url)
                     .get()
                     .build();
             try(Response response = this.client.newCall(request).execute()) {
@@ -64,6 +62,9 @@ public class SeaweedClient {
     public CompletableFuture<FileResponse> writeFile(File file) {
         return CompletableFuture.supplyAsync(() -> {
             FidResponse fid = this.createFid();
+            if(fid == null) {
+                return null;
+            }
             return this.sendFile(file, fid.getUrl(), fid.getFid());
         }, this.pool);
     }
@@ -78,11 +79,9 @@ public class SeaweedClient {
     public CompletableFuture<String> deleteFile(String fid) {
         return CompletableFuture.supplyAsync(() -> {
             VolumeLookupResponse lookup = this.lookupVolume(fid);
-            StringBuilder sb = new StringBuilder(this.buildBaseString(lookup.getUrl()));
-            sb.append("/");
-            sb.append(fid);
+            String url = this.buildBaseString(lookup.getUrl()) + "/" + fid;
             Request request = new Request.Builder()
-                    .url(sb.toString())
+                    .url(url)
                     .delete()
                     .build();
             try(Response response = this.client.newCall(request).execute()) {
@@ -96,10 +95,12 @@ public class SeaweedClient {
 
     private FileResponse sendFile(File file, String hostAndPort, String fid) {
         try {
-            StringBuilder sb = new StringBuilder(this.buildBaseString(hostAndPort));
-            sb.append("/");
-            sb.append(fid);
-            Request request = this.buildFileRequest(sb.toString(), file);
+            String url = this.buildBaseString(hostAndPort) + "/" + fid;
+            Request request = this.buildFileRequest(url, file);
+            if(request == null) {
+                return null;
+            }
+
             try(Response response = this.client.newCall(request).execute()) {
                 String json = Objects.requireNonNull(response.body()).string();
                 JsonObject jsonObj = this.gson.fromJson(json, JsonObject.class);
@@ -123,22 +124,20 @@ public class SeaweedClient {
         String[] split = fid.split(",");
         try {
             int volumeId = Integer.parseInt(split[0]);
-            StringBuilder sb = new StringBuilder(this.buildBaseString(this.masterHost, this.masterPort));
-            sb.append("/dir/lookup?volumeId=");
-            sb.append(volumeId);
+            String reqUrl = this.buildBaseString(this.masterHost, this.masterPort) + "/dir/lookup?volumeId=" + volumeId;
             Request request = new Request.Builder()
-                    .url(sb.toString())
+                    .url(reqUrl)
                     .get()
                     .build();
             try(Response response = this.client.newCall(request).execute()) {
-                String json = response.body().string();
+                String json = Objects.requireNonNull(response.body()).string();
                 JsonObject obj = this.gson.fromJson(json, JsonObject.class);
                 int lookupId = obj.get("volumeId").getAsInt();
                 JsonObject locations = obj.get("locations").getAsJsonObject();
                 String url = locations.get("url").getAsString();
                 return new VolumeLookupResponse(lookupId, url);
             }
-        } catch(NumberFormatException | IOException ex) {
+        } catch(NumberFormatException | IOException | NullPointerException ex) {
             return null;
         }
     }
@@ -161,10 +160,9 @@ public class SeaweedClient {
     }
 
     private FidResponse createFid() {
-        StringBuilder sb = new StringBuilder(this.buildBaseString(this.masterHost, this.masterPort));
-        sb.append("/dir/assign");
+        String url = this.buildBaseString(this.masterHost, this.masterPort) + "/dir/assign";
         Request request = new Request.Builder()
-                .url(sb.toString())
+                .url(url)
                 .get()
                 .build();
         try(Response response = this.client.newCall(request).execute()){
@@ -196,8 +194,6 @@ public class SeaweedClient {
 
         private String masterHost = null;
         private int masterPort = -1;
-        private String volumeHost = null;
-        private int volumePort = -1;
         private boolean ssl = false;
         private int poolSize = Integer.MAX_VALUE;
 
