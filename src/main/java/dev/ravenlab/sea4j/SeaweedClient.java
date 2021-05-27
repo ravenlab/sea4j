@@ -1,6 +1,6 @@
-package com.github.ravenlab.sea4j;
+package dev.ravenlab.sea4j;
 
-import com.github.ravenlab.sea4j.response.FileResponse;
+import dev.ravenlab.sea4j.response.FileResponse;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;

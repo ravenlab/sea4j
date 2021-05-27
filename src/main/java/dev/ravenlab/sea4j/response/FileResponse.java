@@ -1,4 +1,4 @@
-package com.github.ravenlab.sea4j.response;
+package dev.ravenlab.sea4j.response;
 
 public class FileResponse {
 
