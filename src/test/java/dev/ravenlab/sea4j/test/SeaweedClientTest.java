@@ -3,6 +3,7 @@ package dev.ravenlab.sea4j.test;
 import dev.ravenlab.sea4j.SeaweedClient;
 import dev.ravenlab.sea4j.response.FileResponse;
 import dev.ravenlab.sea4j.test.util.HashUtil;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.testcontainers.containers.ContainerState;
@@ -20,12 +21,17 @@ public class SeaweedClientTest {
 
     @Before
     public void setup() {
-        File composeFile = new File("src/test/resources/compose.yml");
+        File composeFile = new File("src/test/resources/docker-compose.yml");
         this.container = new DockerComposeContainer(composeFile)
         .withExposedService("master", 9333)
         .withExposedService("volume", 8080);
         this.container.start();
         this.testFile = new File("src/test/resources/test.txt");
+    }
+
+    @After
+    public void shutdown() {
+        this.container.stop();
     }
 
     @Test
