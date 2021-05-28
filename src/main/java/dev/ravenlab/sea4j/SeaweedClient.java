@@ -62,6 +62,8 @@ public class SeaweedClient {
     public CompletableFuture<FileResponse> writeFile(File file) {
         return CompletableFuture.supplyAsync(() -> {
             FidResponse fid = this.createFid();
+            System.out.println(fid.getFid());
+            System.out.println(fid.getUrl());
             if(fid == null) {
                 return null;
             }
@@ -96,6 +98,7 @@ public class SeaweedClient {
     private FileResponse sendFile(File file, String hostAndPort, String fid) {
         try {
             String url = this.buildBaseString(hostAndPort) + "/" + fid;
+            System.out.println(url);
             Request request = this.buildFileRequest(url, file);
             if(request == null) {
                 return null;
@@ -146,8 +149,8 @@ public class SeaweedClient {
         try {
             MediaType type = MediaType.parse(Files.probeContentType(file.toPath()));
             RequestBody body = new MultipartBody.Builder()
-                    .addFormDataPart("file", file.getName(), RequestBody.create(file, type))
                     .setType(MultipartBody.FORM)
+                    .addFormDataPart("file", file.getName(), RequestBody.create(file, type))
                     .build();
             return new Request.Builder()
                     .url(url)

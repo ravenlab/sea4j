@@ -5,6 +5,7 @@ import dev.ravenlab.sea4j.response.FileResponse;
 import dev.ravenlab.sea4j.test.util.HashUtil;
 import org.junit.Before;
 import org.junit.Test;
+import org.testcontainers.containers.ContainerState;
 import org.testcontainers.containers.DockerComposeContainer;
 
 import java.io.File;
@@ -37,9 +38,12 @@ public class SeaweedClientTest {
 
     @Test
     public void testWrite() {
+        String masterHost = this.container.getServiceHost("master", 9333);
+        int masterPort = this.container.getServicePort("master", 9333);
+        System.out.println(masterHost + " " + masterPort);
         SeaweedClient client = new SeaweedClient.Builder()
-                .masterHost(this.container.getServiceHost("master", 9333))
-                .masterPort(this.container.getServicePort("master", 9333))
+                .masterHost(masterHost)
+                .masterPort(masterPort)
                 .build();
         long size = this.testFile.length();
         try {
