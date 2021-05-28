@@ -5,12 +5,14 @@ import dev.ravenlab.sea4j.response.FileResponse;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import dev.ravenlab.sea4j.response.VolumeLookupResponse;
+import okhttp3.Interceptor;
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
@@ -39,7 +41,22 @@ public class SeaweedClient {
                 60L, TimeUnit.SECONDS,
                 new SynchronousQueue<>());
         this.gson = new Gson();
-        this.client = new OkHttpClient();
+        this.client = new OkHttpClient.Builder()
+        .addInterceptor(new Interceptor() {
+            @NotNull
+            @Override
+            public Response intercept(@NotNull Chain chain) throws IOException {
+                Request request = chain.request();
+                long t1 = System.nanoTime();
+                System.out.println(String.format("Sending request %s on %s%n%s",
+                        request.url(), chain.connection(), request.headers()));
+                Response response = chain.proceed(request);
+                long t2 = System.nanoTime();
+                System.out.println(String.format("Received response for %s in %.1fms%n%s",
+                        response.request().url(), (t2 - t1) / 1e6d, response.headers()));
+                return response;
+            }
+        }).build();
     }
 
     public CompletableFuture<byte[]> readFile(String fid) {
@@ -96,19 +113,20 @@ public class SeaweedClient {
     }
 
     private FileResponse sendFile(File file, String hostAndPort, String fid) {
-        String url = this.buildBaseString(hostAndPort) + "/" + fid;
+        String url = this.buildBaseString("localhost:8080") + "/" + fid;
         System.out.println(url);
+
         Request request = this.buildFileRequest(url, file);
         if(request == null) {
             return null;
         }
         try(Response response = this.client.newCall(request).execute()) {
             String json = Objects.requireNonNull(response.body()).string();
+            System.out.println("response json: " + json);
             JsonObject jsonObj = this.gson.fromJson(json, JsonObject.class);
-            String fileName = jsonObj.get("name").getAsString();
             long fileSize = jsonObj.get("size").getAsLong();
-            String eTag = jsonObj.get("etag").getAsString();
-            return new FileResponse(fid, fileName, fileSize, eTag);
+            String eTag = jsonObj.get("eTag").getAsString();
+            return new FileResponse(fid, fileSize, eTag);
         } catch(IOException | NullPointerException e) {
             e.printStackTrace();
             return null;
@@ -143,20 +161,15 @@ public class SeaweedClient {
     }
 
     private Request buildFileRequest(String url, File file) {
-        try {
-            MediaType type = MediaType.parse(Files.probeContentType(file.toPath()));
-            RequestBody body = new MultipartBody.Builder()
-                    .setType(MultipartBody.FORM)
-                    .addFormDataPart("file", file.getName(), RequestBody.create(file, type))
-                    .build();
-            return new Request.Builder()
-                    .url(url)
-                    .post(body)
-                    .build();
-        } catch(IOException e) {
-            e.printStackTrace();
-            return null;
-        }
+        MediaType type = MediaType.parse("application/octet-stream");//Files.probeContentType(file.toPath()));
+        RequestBody body = new MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addPart(RequestBody.create(file, type))
+                .build();
+        return new Request.Builder()
+                .url(url)
+                .post(body)
+                .build();
     }
 
     private FidResponse createFid() {
@@ -167,6 +180,7 @@ public class SeaweedClient {
                 .build();
         try(Response response = this.client.newCall(request).execute()){
             String json = Objects.requireNonNull(response.body()).string();
+            System.out.println("json: " + json);
             return this.gson.fromJson(json, FidResponse.class);
         } catch(IOException | NullPointerException e) {
             e.printStackTrace();

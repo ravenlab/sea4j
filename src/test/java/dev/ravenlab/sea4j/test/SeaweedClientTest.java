@@ -6,7 +6,6 @@ import dev.ravenlab.sea4j.test.util.HashUtil;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.testcontainers.containers.ContainerState;
 import org.testcontainers.containers.DockerComposeContainer;
 import org.testcontainers.containers.output.OutputFrame;
 
