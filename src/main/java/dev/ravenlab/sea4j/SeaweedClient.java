@@ -96,22 +96,19 @@ public class SeaweedClient {
     }
 
     private FileResponse sendFile(File file, String hostAndPort, String fid) {
-        try {
-            String url = this.buildBaseString(hostAndPort) + "/" + fid;
-            System.out.println(url);
-            Request request = this.buildFileRequest(url, file);
-            if(request == null) {
-                return null;
-            }
-
-            try(Response response = this.client.newCall(request).execute()) {
-                String json = Objects.requireNonNull(response.body()).string();
-                JsonObject jsonObj = this.gson.fromJson(json, JsonObject.class);
-                String fileName = jsonObj.get("name").getAsString();
-                long fileSize = jsonObj.get("size").getAsLong();
-                String eTag = jsonObj.get("etag").getAsString();
-                return new FileResponse(fid, fileName, fileSize, eTag);
-            }
+        String url = this.buildBaseString(hostAndPort) + "/" + fid;
+        System.out.println(url);
+        Request request = this.buildFileRequest(url, file);
+        if(request == null) {
+            return null;
+        }
+        try(Response response = this.client.newCall(request).execute()) {
+            String json = Objects.requireNonNull(response.body()).string();
+            JsonObject jsonObj = this.gson.fromJson(json, JsonObject.class);
+            String fileName = jsonObj.get("name").getAsString();
+            long fileSize = jsonObj.get("size").getAsLong();
+            String eTag = jsonObj.get("etag").getAsString();
+            return new FileResponse(fid, fileName, fileSize, eTag);
         } catch(IOException | NullPointerException e) {
             e.printStackTrace();
             return null;

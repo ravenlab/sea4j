@@ -8,6 +8,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.testcontainers.containers.ContainerState;
 import org.testcontainers.containers.DockerComposeContainer;
+import org.testcontainers.containers.output.OutputFrame;
 
 import java.io.File;
 import java.util.concurrent.ExecutionException;
@@ -23,8 +24,17 @@ public class SeaweedClientTest {
     public void setup() {
         File composeFile = new File("src/test/resources/docker-compose.yml");
         this.container = new DockerComposeContainer(composeFile)
-        .withExposedService("master", 9333)
-        .withExposedService("volume", 8080);
+                .withExposedService("master", 9333)
+                .withExposedService("master", 19333)
+                .withExposedService("volume", 8080)
+                .withExposedService("volume", 18080)
+                .withLogConsumer("volume", (out) -> {
+                    OutputFrame frame = (OutputFrame) out;
+                    System.out.println("volume: " + frame.getUtf8String());
+                }).withLogConsumer("master", (out) -> {
+                    OutputFrame frame = (OutputFrame) out;
+                    System.out.println("master: " + frame.getUtf8String());
+                });;
         this.container.start();
         this.testFile = new File("src/test/resources/test.txt");
     }

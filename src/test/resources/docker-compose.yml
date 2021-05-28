@@ -5,11 +5,13 @@ services:
     image: chrislusf/seaweedfs # use a remote image
     ports:
       - 9333:9333
+      - 19333:19333
     command: "master -ip=master"
   volume:
     image: chrislusf/seaweedfs # use a remote image
     ports:
       - 8080:8080
+      - 18080:18080
     command: 'volume -mserver="master:9333" -port=8080'
     depends_on:
       - master
