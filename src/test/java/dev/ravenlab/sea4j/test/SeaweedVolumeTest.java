@@ -19,7 +19,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-public class SeaweedClientTest {
+public class SeaweedVolumeTest {
 
     private DockerComposeContainer container;
     private File testFile;
@@ -63,7 +63,7 @@ public class SeaweedClientTest {
     public void testWrite() {
         long size = this.testFile.length();
         try {
-            FileWrittenResponse response = this.client.writeFile(this.testFile).get();
+            FileWrittenResponse response = this.client.volume().writeFile(this.testFile).get();
             assertEquals(response.getFileSize(), size);
         } catch(InterruptedException | ExecutionException e) {
             e.printStackTrace();
@@ -76,11 +76,11 @@ public class SeaweedClientTest {
         int chars = 10;
         byte[] starFileHash = HashUtil.getMD5(this.starTestFile);
         try {
-            FileWrittenResponse response = this.client.writeFile(this.testFile).get();
+            FileWrittenResponse response = this.client.volume().writeFile(this.testFile).get();
             String fid = response.getFid();
             assertEquals(response.getFileSize(), originalSize);
-            assertEquals(chars, this.client.updateFile(this.starTestFile, fid).get().getFileSize());
-            byte[] retrievedHash = HashUtil.getMD5(this.client.readFile(fid).get().getData());
+            assertEquals(chars, this.client.volume().updateFile(this.starTestFile, fid).get().getFileSize());
+            byte[] retrievedHash = HashUtil.getMD5(this.client.volume().readFile(fid).get().getData());
             assertTrue(Arrays.equals(starFileHash, retrievedHash));
         } catch(InterruptedException | ExecutionException e) {
             e.printStackTrace();
@@ -90,7 +90,7 @@ public class SeaweedClientTest {
     @Test
     public void testUpdateFileNullVolume() {
         try {
-            assertNull(this.client.updateFile(this.starTestFile, null).get());
+            assertNull(this.client.volume().updateFile(this.starTestFile, null).get());
         } catch(InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }
@@ -100,8 +100,8 @@ public class SeaweedClientTest {
     public void testRead() {
         byte[] testFileHash = HashUtil.getMD5(this.testFile);
         try {
-            FileWrittenResponse response = this.client.writeFile(this.testFile).get();
-            byte[] readHash = HashUtil.getMD5(this.client.readFile(response.getFid()).get().getData());
+            FileWrittenResponse response = this.client.volume().writeFile(this.testFile).get();
+            byte[] readHash = HashUtil.getMD5(this.client.volume().readFile(response.getFid()).get().getData());
             assertTrue(Arrays.equals(testFileHash, readHash));
         } catch(InterruptedException | ExecutionException e) {
             e.printStackTrace();
@@ -111,7 +111,7 @@ public class SeaweedClientTest {
     @Test
     public void testReadNoFile() {
         try {
-            assertFalse(this.client.readFile("3,017e84ad0d").get().getExists());
+            assertFalse(this.client.volume().readFile("3,017e84ad0d").get().getExists());
         } catch(InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }
@@ -121,11 +121,11 @@ public class SeaweedClientTest {
     public void testDelete() {
         byte[] testFileHash = HashUtil.getMD5(this.testFile);
         try {
-            FileWrittenResponse updatedResponse = this.client.writeFile(this.testFile).get();
+            FileWrittenResponse updatedResponse = this.client.volume().writeFile(this.testFile).get();
             String fid = updatedResponse.getFid();
-            byte[] readHash = HashUtil.getMD5(this.client.readFile(fid).get().getData());
+            byte[] readHash = HashUtil.getMD5(this.client.volume().readFile(fid).get().getData());
             assertTrue(Arrays.equals(testFileHash, readHash));
-            assertTrue(this.client.deleteFile(fid).get());
+            assertTrue(this.client.volume().deleteFile(fid).get());
         } catch(InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }
@@ -134,7 +134,7 @@ public class SeaweedClientTest {
     @Test
     public void testDeleteNoFile() {
         try {
-            assertFalse(this.client.deleteFile("3,017e84ad0d").get());
+            assertFalse(this.client.volume().deleteFile("3,017e84ad0d").get());
         } catch(InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }
