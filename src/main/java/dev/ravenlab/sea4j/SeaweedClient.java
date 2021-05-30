@@ -1,24 +1,24 @@
 package dev.ravenlab.sea4j;
 
 import dev.ravenlab.sea4j.response.FidResponse;
-import dev.ravenlab.sea4j.response.FileResponse;
+import dev.ravenlab.sea4j.response.ReadFileResponse;
+import dev.ravenlab.sea4j.response.FileUpdatedResponse;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import dev.ravenlab.sea4j.response.VolumeLookupResponse;
 import dev.ravenlab.sea4j.util.DebugUtil;
-import okhttp3.Interceptor;
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
-import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
+import java.util.Arrays;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.SynchronousQueue;
@@ -45,24 +45,29 @@ public class SeaweedClient {
         this.client = this.buildClient(verbose);
     }
 
-    public CompletableFuture<byte[]> readFile(String fid) {
+    public CompletableFuture<ReadFileResponse> readFile(String fid) {
         return CompletableFuture.supplyAsync(() -> {
             VolumeLookupResponse lookup = this.lookupVolume(fid);
+            if(lookup == null) {
+                return new ReadFileResponse();
+            }
             String url = this.buildBaseString(lookup.getUrl()) + "/" + fid;
             Request request = new Request.Builder()
                     .url(url)
                     .get()
                     .build();
             try(Response response = this.client.newCall(request).execute()) {
-                return Objects.requireNonNull(response.body()).bytes();
+                byte[] body = Objects.requireNonNull(response.body()).bytes();
+                System.out.println("body: " + Arrays.toString(body));
+                return new ReadFileResponse(body);
             } catch(IOException | NullPointerException e) {
                 e.printStackTrace();
-                return new byte[0];
+                return new ReadFileResponse();
             }
         }, this.pool);
     }
 
-    public CompletableFuture<FileResponse> writeFile(File file) {
+    public CompletableFuture<FileUpdatedResponse> writeFile(File file) {
         return CompletableFuture.supplyAsync(() -> {
             FidResponse fid = this.createFid();
             System.out.println(fid.getFid());
@@ -74,7 +79,7 @@ public class SeaweedClient {
         }, this.pool);
     }
 
-    public CompletableFuture<FileResponse> updateFile(File file, String fid) {
+    public CompletableFuture<FileUpdatedResponse> updateFile(File file, String fid) {
         return CompletableFuture.supplyAsync(() -> {
             VolumeLookupResponse lookup = this.lookupVolume(fid);
             return this.sendFile(file, lookup.getUrl(), fid);
@@ -98,7 +103,7 @@ public class SeaweedClient {
         });
     }
 
-    private FileResponse sendFile(File file, String hostAndPort, String fid) {
+    private FileUpdatedResponse sendFile(File file, String hostAndPort, String fid) {
         String url = this.buildBaseString(hostAndPort) + "/" + fid;
         System.out.println(url);
 
@@ -112,7 +117,7 @@ public class SeaweedClient {
             JsonObject jsonObj = this.gson.fromJson(json, JsonObject.class);
             long fileSize = jsonObj.get("size").getAsLong();
             String eTag = jsonObj.get("eTag").getAsString();
-            return new FileResponse(fid, fileSize, eTag);
+            return new FileUpdatedResponse(fid, fileSize, eTag);
         } catch(IOException | NullPointerException e) {
             e.printStackTrace();
             return null;

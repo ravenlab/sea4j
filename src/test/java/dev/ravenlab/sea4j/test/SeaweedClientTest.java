@@ -2,7 +2,7 @@ package dev.ravenlab.sea4j.test;
 
 import dev.ravenlab.sea4j.Constant;
 import dev.ravenlab.sea4j.SeaweedClient;
-import dev.ravenlab.sea4j.response.FileResponse;
+import dev.ravenlab.sea4j.response.FileUpdatedResponse;
 import dev.ravenlab.sea4j.test.util.HashUtil;
 import org.junit.After;
 import org.junit.Before;
@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class SeaweedClientTest {
@@ -59,7 +60,7 @@ public class SeaweedClientTest {
     public void testWrite() {
         long size = this.testFile.length();
         try {
-            FileResponse response = this.client.writeFile(this.testFile).get();
+            FileUpdatedResponse response = this.client.writeFile(this.testFile).get();
             assertEquals(response.getFileSize(), size);
         } catch(InterruptedException | ExecutionException e) {
             e.printStackTrace();
@@ -70,9 +71,18 @@ public class SeaweedClientTest {
     public void testRead() {
         byte[] testFileHash = HashUtil.getMD5(this.testFile);
         try {
-            FileResponse response = this.client.writeFile(this.testFile).get();
-            byte[] readHash = HashUtil.getMD5(this.client.readFile(response.getFid()).get());
+            FileUpdatedResponse response = this.client.writeFile(this.testFile).get();
+            byte[] readHash = HashUtil.getMD5(this.client.readFile(response.getFid()).get().getData());
             assertTrue(Arrays.equals(testFileHash, readHash));
+        } catch(InterruptedException |ExecutionException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Test
+    public void testReadNoFile() {
+        try {
+            assertFalse(this.client.readFile("3,017e84ad0d").get().getExists());
         } catch(InterruptedException |ExecutionException e) {
             e.printStackTrace();
         }

@@ -1,7 +1,5 @@
 package dev.ravenlab.sea4j.response;
 
-import dev.ravenlab.sea4j.Constant;
-
 public class FidResponse {
 
     private final int count;
