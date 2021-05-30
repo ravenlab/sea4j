@@ -16,13 +16,13 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.logging.Logger;
 
-public class VolumeClient {
+public class VolumeClient extends BaseUploadClient {
 
-    private final SeaweedClient seaweed;
-
-    protected VolumeClient(SeaweedClient seaweed) {
-        this.seaweed = seaweed;
+    public VolumeClient(String host, int port, boolean ssl, boolean verbose, ExecutorService pool, Logger logger) {
+        super(host, port, ssl, verbose, pool, logger);
     }
 
     public CompletableFuture<ReadFileResponse> readFile(String fid) {
@@ -31,12 +31,12 @@ public class VolumeClient {
             if(lookup == null) {
                 return new ReadFileResponse();
             }
-            String url = this.seaweed.buildBaseString(lookup.getUrl()) + "/" + fid;
+            String url = this.buildBaseString(lookup.getUrl()) + "/" + fid;
             Request request = new Request.Builder()
                     .url(url)
                     .get()
                     .build();
-            try(Response response = this.seaweed.getClient().newCall(request).execute()) {
+            try(Response response = this.getClient().newCall(request).execute()) {
                 byte[] body = Objects.requireNonNull(response.body()).bytes();
                 System.out.println("body: " + Arrays.toString(body));
                 return new ReadFileResponse(body);
@@ -44,7 +44,7 @@ public class VolumeClient {
                 e.printStackTrace();
                 return new ReadFileResponse();
             }
-        }, this.seaweed.getPool());
+        }, this.getPool());
     }
 
     public CompletableFuture<FileWrittenResponse> writeFile(File file) {
@@ -54,7 +54,7 @@ public class VolumeClient {
                 return null;
             }
             return this.sendFile(file, fid.getUrl(), fid.getFid());
-        }, this.seaweed.getPool());
+        }, this.getPool());
     }
 
     public CompletableFuture<FileWrittenResponse> updateFile(File file, String fid) {
@@ -73,12 +73,12 @@ public class VolumeClient {
             if(lookup == null) {
                 return false;
             }
-            String url = this.seaweed.buildBaseString(lookup.getUrl()) + "/" + fid;
+            String url = this.buildBaseString(lookup.getUrl()) + "/" + fid;
             Request request = new Request.Builder()
                     .url(url)
                     .delete()
                     .build();
-            try(Response response = this.seaweed.getClient().newCall(request).execute()) {
+            try(Response response = this.getClient().newCall(request).execute()) {
                 String message = response.message();
                 return message != null && message.equals("Accepted");
             } catch(IOException e) {
@@ -89,17 +89,17 @@ public class VolumeClient {
     }
 
     private FileWrittenResponse sendFile(File file, String hostAndPort, String fid) {
-        String url = this.seaweed.buildBaseString(hostAndPort) + "/" + fid;
+        String url = this.buildBaseString(hostAndPort) + "/" + fid;
         System.out.println(url);
 
         Request request = this.buildFileRequest(url, file);
         if(request == null) {
             return null;
         }
-        try(Response response = this.seaweed.getClient().newCall(request).execute()) {
+        try(Response response = this.getClient().newCall(request).execute()) {
             String json = Objects.requireNonNull(response.body()).string();
             System.out.println("response json: " + json);
-            JsonObject jsonObj = this.seaweed.getGson().fromJson(json, JsonObject.class);
+            JsonObject jsonObj = this.getGson().fromJson(json, JsonObject.class);
             long fileSize = jsonObj.get("size").getAsLong();
             String eTag = jsonObj.get("eTag").getAsString();
             return new FileWrittenResponse(fid, fileSize, eTag);
@@ -118,15 +118,15 @@ public class VolumeClient {
         String[] split = fid.split(",");
         try {
             int volumeId = Integer.parseInt(split[0]);
-            String reqUrl = this.seaweed.buildMasterString() + "/dir/lookup?volumeId=" + volumeId;
+            String reqUrl = this.buildMasterString() + "/dir/lookup?volumeId=" + volumeId;
             Request request = new Request.Builder()
                     .url(reqUrl)
                     .get()
                     .build();
-            try(Response response = this.seaweed.getClient().newCall(request).execute()) {
+            try(Response response = this.getClient().newCall(request).execute()) {
                 String json = Objects.requireNonNull(response.body()).string();
                 System.out.println("lookup volume: " + json);
-                JsonObject obj = this.seaweed.getGson().fromJson(json, JsonObject.class);
+                JsonObject obj = this.getGson().fromJson(json, JsonObject.class);
                 int lookupId = obj.get("volumeId").getAsInt();
                 JsonObject locations = obj.get("locations").getAsJsonArray().get(0).getAsJsonObject();
                 String url = locations.get("url").getAsString();
@@ -150,18 +150,56 @@ public class VolumeClient {
     }
 
     private FidResponse createFid() {
-        String url = this.seaweed.buildMasterString() + "/dir/assign";
+        String url = this.buildMasterString() + "/dir/assign";
         Request request = new Request.Builder()
                 .url(url)
                 .get()
                 .build();
-        try(Response response = this.seaweed.getClient().newCall(request).execute()){
+        try(Response response = this.getClient().newCall(request).execute()){
             String json = Objects.requireNonNull(response.body()).string();
             System.out.println("json: " + json);
-            return this.seaweed.getGson().fromJson(json, FidResponse.class);
+            return this.getGson().fromJson(json, FidResponse.class);
         } catch(IOException | NullPointerException e) {
             e.printStackTrace();
             return null;
+        }
+    }
+
+    public static class Builder extends BaseUploadClient.Builder {
+
+        private String masterHost = null;
+        private int masterPort = -1;
+        private boolean ssl = false;
+        private boolean verbose = false;
+
+        public Builder(ExecutorService pool, Logger logger) {
+            super(pool, logger);
+        }
+
+        public Builder masterHost(String host) {
+            this.masterHost = host;
+            return this;
+        }
+
+        public Builder masterPort(int port) {
+            this.masterPort = port;
+            return this;
+        }
+
+        public Builder ssl(boolean ssl) {
+            this.ssl =  ssl;
+            return this;
+        }
+
+        public Builder verbose(boolean verbose) {
+            this.verbose = verbose;
+            return this;
+        }
+
+        public VolumeClient build() {
+            return new VolumeClient(this.masterHost, this.masterPort,
+                    this.ssl, this.verbose,
+                    this.getPool(), this.getLogger());
         }
     }
 }

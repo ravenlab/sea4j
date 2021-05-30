@@ -2,6 +2,7 @@ package dev.ravenlab.sea4j.test;
 
 import dev.ravenlab.sea4j.Constant;
 import dev.ravenlab.sea4j.SeaweedClient;
+import dev.ravenlab.sea4j.VolumeClient;
 import dev.ravenlab.sea4j.response.FileWrittenResponse;
 import dev.ravenlab.sea4j.test.util.HashUtil;
 import org.junit.After;
@@ -24,7 +25,7 @@ public class SeaweedVolumeTest {
     private DockerComposeContainer container;
     private File testFile;
     private File starTestFile;
-    private SeaweedClient client;
+    private VolumeClient volumeClient;
 
     @Before
     public void setup() {
@@ -47,7 +48,9 @@ public class SeaweedVolumeTest {
         this.starTestFile = new File("src/test/resources/star-test.txt");
         String masterHost = this.container.getServiceHost("master", 9333);
         int masterPort = this.container.getServicePort("master", 9333);
-        this.client = new SeaweedClient.Builder()
+        this.volumeClient = new SeaweedClient.Builder()
+                .build()
+                .volumeBuilder()
                 .masterHost(masterHost)
                 .masterPort(masterPort)
                 .verbose(true)
@@ -63,7 +66,7 @@ public class SeaweedVolumeTest {
     public void testWrite() {
         long size = this.testFile.length();
         try {
-            FileWrittenResponse response = this.client.volume().writeFile(this.testFile).get();
+            FileWrittenResponse response = this.volumeClient.writeFile(this.testFile).get();
             assertEquals(response.getFileSize(), size);
         } catch(InterruptedException | ExecutionException e) {
             e.printStackTrace();
@@ -76,11 +79,11 @@ public class SeaweedVolumeTest {
         int chars = 10;
         byte[] starFileHash = HashUtil.getMD5(this.starTestFile);
         try {
-            FileWrittenResponse response = this.client.volume().writeFile(this.testFile).get();
+            FileWrittenResponse response = this.volumeClient.writeFile(this.testFile).get();
             String fid = response.getFid();
             assertEquals(response.getFileSize(), originalSize);
-            assertEquals(chars, this.client.volume().updateFile(this.starTestFile, fid).get().getFileSize());
-            byte[] retrievedHash = HashUtil.getMD5(this.client.volume().readFile(fid).get().getData());
+            assertEquals(chars, this.volumeClient.updateFile(this.starTestFile, fid).get().getFileSize());
+            byte[] retrievedHash = HashUtil.getMD5(this.volumeClient.readFile(fid).get().getData());
             assertTrue(Arrays.equals(starFileHash, retrievedHash));
         } catch(InterruptedException | ExecutionException e) {
             e.printStackTrace();
@@ -90,7 +93,7 @@ public class SeaweedVolumeTest {
     @Test
     public void testUpdateFileNullVolume() {
         try {
-            assertNull(this.client.volume().updateFile(this.starTestFile, null).get());
+            assertNull(this.volumeClient.updateFile(this.starTestFile, null).get());
         } catch(InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }
@@ -100,8 +103,8 @@ public class SeaweedVolumeTest {
     public void testRead() {
         byte[] testFileHash = HashUtil.getMD5(this.testFile);
         try {
-            FileWrittenResponse response = this.client.volume().writeFile(this.testFile).get();
-            byte[] readHash = HashUtil.getMD5(this.client.volume().readFile(response.getFid()).get().getData());
+            FileWrittenResponse response = this.volumeClient.writeFile(this.testFile).get();
+            byte[] readHash = HashUtil.getMD5(this.volumeClient.readFile(response.getFid()).get().getData());
             assertTrue(Arrays.equals(testFileHash, readHash));
         } catch(InterruptedException | ExecutionException e) {
             e.printStackTrace();
@@ -111,7 +114,7 @@ public class SeaweedVolumeTest {
     @Test
     public void testReadNoFile() {
         try {
-            assertFalse(this.client.volume().readFile("3,017e84ad0d").get().getExists());
+            assertFalse(this.volumeClient.readFile("3,017e84ad0d").get().getExists());
         } catch(InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }
@@ -121,11 +124,11 @@ public class SeaweedVolumeTest {
     public void testDelete() {
         byte[] testFileHash = HashUtil.getMD5(this.testFile);
         try {
-            FileWrittenResponse updatedResponse = this.client.volume().writeFile(this.testFile).get();
+            FileWrittenResponse updatedResponse = this.volumeClient.writeFile(this.testFile).get();
             String fid = updatedResponse.getFid();
-            byte[] readHash = HashUtil.getMD5(this.client.volume().readFile(fid).get().getData());
+            byte[] readHash = HashUtil.getMD5(this.volumeClient.readFile(fid).get().getData());
             assertTrue(Arrays.equals(testFileHash, readHash));
-            assertTrue(this.client.volume().deleteFile(fid).get());
+            assertTrue(this.volumeClient.deleteFile(fid).get());
         } catch(InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }
@@ -134,7 +137,7 @@ public class SeaweedVolumeTest {
     @Test
     public void testDeleteNoFile() {
         try {
-            assertFalse(this.client.volume().deleteFile("3,017e84ad0d").get());
+            assertFalse(this.volumeClient.deleteFile("3,017e84ad0d").get());
         } catch(InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }
