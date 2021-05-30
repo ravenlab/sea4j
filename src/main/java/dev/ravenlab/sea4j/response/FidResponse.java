@@ -23,10 +23,6 @@ public class FidResponse {
     }
 
     public String getUrl() {
-        if(System.getProperty(Constant.DEBUG_KEY) != null) {
-            String[] split = url.split(":");
-            return "localhost:" + split[1];
-        }
         return this.url;
     }
 }

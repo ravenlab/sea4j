@@ -11,9 +11,11 @@ import org.testcontainers.containers.DockerComposeContainer;
 import org.testcontainers.containers.output.OutputFrame;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class SeaweedClientTest {
 
@@ -69,7 +71,8 @@ public class SeaweedClientTest {
         byte[] testFileHash = HashUtil.getMD5(this.testFile);
         try {
             FileResponse response = this.client.writeFile(this.testFile).get();
-
+            byte[] readHash = HashUtil.getMD5(this.client.readFile(response.getFid()).get());
+            assertTrue(Arrays.equals(testFileHash, readHash));
         } catch(InterruptedException |ExecutionException e) {
             e.printStackTrace();
         }

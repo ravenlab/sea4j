@@ -5,6 +5,7 @@ import dev.ravenlab.sea4j.response.FileResponse;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import dev.ravenlab.sea4j.response.VolumeLookupResponse;
+import dev.ravenlab.sea4j.util.DebugUtil;
 import okhttp3.Interceptor;
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
@@ -134,9 +135,10 @@ public class SeaweedClient {
                     .build();
             try(Response response = this.client.newCall(request).execute()) {
                 String json = Objects.requireNonNull(response.body()).string();
+                System.out.println("lookup volume: " + json);
                 JsonObject obj = this.gson.fromJson(json, JsonObject.class);
                 int lookupId = obj.get("volumeId").getAsInt();
-                JsonObject locations = obj.get("locations").getAsJsonObject();
+                JsonObject locations = obj.get("locations").getAsJsonArray().get(0).getAsJsonObject();
                 String url = locations.get("url").getAsString();
                 return new VolumeLookupResponse(lookupId, url);
             }
@@ -177,6 +179,18 @@ public class SeaweedClient {
         return this.buildBaseString(host + ":" + port);
     }
 
+    private String buildBaseString(String hostAndPort) {
+        StringBuilder sb = new StringBuilder();
+        String protocol = "http";
+        if(ssl) {
+            protocol = "https";
+        }
+        sb.append(protocol);
+        sb.append("://");
+        sb.append(DebugUtil.checkForDebugUrl(hostAndPort));
+        return sb.toString();
+    }
+
     private OkHttpClient buildClient(boolean verbose) {
         OkHttpClient.Builder builder = new OkHttpClient.Builder();
         if(verbose) {
@@ -193,18 +207,6 @@ public class SeaweedClient {
             });
         }
         return builder.build();
-    }
-
-    private String buildBaseString(String hostAndPort) {
-        StringBuilder sb = new StringBuilder();
-        String protocol = "http";
-        if(ssl) {
-            protocol = "https";
-        }
-        sb.append(protocol);
-        sb.append("://");
-        sb.append(hostAndPort);
-        return sb.toString();
     }
 
     public static class Builder {
