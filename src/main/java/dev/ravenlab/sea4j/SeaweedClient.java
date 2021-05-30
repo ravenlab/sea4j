@@ -2,7 +2,7 @@ package dev.ravenlab.sea4j;
 
 import dev.ravenlab.sea4j.response.FidResponse;
 import dev.ravenlab.sea4j.response.ReadFileResponse;
-import dev.ravenlab.sea4j.response.FileUpdatedResponse;
+import dev.ravenlab.sea4j.response.FileWrittenResponse;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import dev.ravenlab.sea4j.response.VolumeLookupResponse;
@@ -37,12 +37,12 @@ public class SeaweedClient {
     private final Logger logger;
 
     private SeaweedClient(String masterHost, int masterPort,
-                          boolean ssl, int poolSize,
+                          boolean ssl, int maxPoolSize,
                           boolean verbose, Logger logger) {
         this.masterHost = masterHost;
         this.masterPort = masterPort;
         this.ssl = ssl;
-        this.pool = new ThreadPoolExecutor(0, poolSize,
+        this.pool = new ThreadPoolExecutor(0, maxPoolSize,
                 60L, TimeUnit.SECONDS,
                 new SynchronousQueue<>());
         this.gson = new Gson();
@@ -72,7 +72,7 @@ public class SeaweedClient {
         }, this.pool);
     }
 
-    public CompletableFuture<FileUpdatedResponse> writeFile(File file) {
+    public CompletableFuture<FileWrittenResponse> writeFile(File file) {
         return CompletableFuture.supplyAsync(() -> {
             FidResponse fid = this.createFid();
             if(fid == null) {
@@ -82,9 +82,12 @@ public class SeaweedClient {
         }, this.pool);
     }
 
-    public CompletableFuture<FileUpdatedResponse> updateFile(File file, String fid) {
+    public CompletableFuture<FileWrittenResponse> updateFile(File file, String fid) {
         return CompletableFuture.supplyAsync(() -> {
             VolumeLookupResponse lookup = this.lookupVolume(fid);
+            if(lookup == null) {
+                return null;
+            }
             return this.sendFile(file, lookup.getUrl(), fid);
         });
     }
@@ -110,7 +113,7 @@ public class SeaweedClient {
         });
     }
 
-    private FileUpdatedResponse sendFile(File file, String hostAndPort, String fid) {
+    private FileWrittenResponse sendFile(File file, String hostAndPort, String fid) {
         String url = this.buildBaseString(hostAndPort) + "/" + fid;
         System.out.println(url);
 
@@ -124,7 +127,7 @@ public class SeaweedClient {
             JsonObject jsonObj = this.gson.fromJson(json, JsonObject.class);
             long fileSize = jsonObj.get("size").getAsLong();
             String eTag = jsonObj.get("eTag").getAsString();
-            return new FileUpdatedResponse(fid, fileSize, eTag);
+            return new FileWrittenResponse(fid, fileSize, eTag);
         } catch(IOException | NullPointerException e) {
             e.printStackTrace();
             return null;
