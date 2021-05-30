@@ -74,7 +74,7 @@ public class SeaweedClientTest {
             FileUpdatedResponse response = this.client.writeFile(this.testFile).get();
             byte[] readHash = HashUtil.getMD5(this.client.readFile(response.getFid()).get().getData());
             assertTrue(Arrays.equals(testFileHash, readHash));
-        } catch(InterruptedException |ExecutionException e) {
+        } catch(InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }
     }
@@ -83,7 +83,30 @@ public class SeaweedClientTest {
     public void testReadNoFile() {
         try {
             assertFalse(this.client.readFile("3,017e84ad0d").get().getExists());
-        } catch(InterruptedException |ExecutionException e) {
+        } catch(InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Test
+    public void testDelete() {
+        byte[] testFileHash = HashUtil.getMD5(this.testFile);
+        try {
+            FileUpdatedResponse updatedResponse = this.client.writeFile(this.testFile).get();
+            String fid = updatedResponse.getFid();
+            byte[] readHash = HashUtil.getMD5(this.client.readFile(fid).get().getData());
+            assertTrue(Arrays.equals(testFileHash, readHash));
+            assertTrue(this.client.deleteFile(fid).get());
+        } catch(InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Test
+    public void testDeleteNoFile() {
+        try {
+            assertFalse(this.client.deleteFile("3,017e84ad0d").get());
+        } catch(InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }
     }

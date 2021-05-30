@@ -18,12 +18,13 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class SeaweedClient {
 
@@ -33,8 +34,11 @@ public class SeaweedClient {
     private final ExecutorService pool;
     private final Gson gson;
     private final OkHttpClient client;
+    private final Logger logger;
 
-    private SeaweedClient(String masterHost, int masterPort, boolean ssl, int poolSize, boolean verbose) {
+    private SeaweedClient(String masterHost, int masterPort,
+                          boolean ssl, int poolSize,
+                          boolean verbose, Logger logger) {
         this.masterHost = masterHost;
         this.masterPort = masterPort;
         this.ssl = ssl;
@@ -43,6 +47,7 @@ public class SeaweedClient {
                 new SynchronousQueue<>());
         this.gson = new Gson();
         this.client = this.buildClient(verbose);
+        this.logger = logger;
     }
 
     public CompletableFuture<ReadFileResponse> readFile(String fid) {
@@ -70,8 +75,6 @@ public class SeaweedClient {
     public CompletableFuture<FileUpdatedResponse> writeFile(File file) {
         return CompletableFuture.supplyAsync(() -> {
             FidResponse fid = this.createFid();
-            System.out.println(fid.getFid());
-            System.out.println(fid.getUrl());
             if(fid == null) {
                 return null;
             }
@@ -86,19 +89,23 @@ public class SeaweedClient {
         });
     }
 
-    public CompletableFuture<String> deleteFile(String fid) {
+    public CompletableFuture<Boolean> deleteFile(String fid) {
         return CompletableFuture.supplyAsync(() -> {
             VolumeLookupResponse lookup = this.lookupVolume(fid);
+            if(lookup == null) {
+                return false;
+            }
             String url = this.buildBaseString(lookup.getUrl()) + "/" + fid;
             Request request = new Request.Builder()
                     .url(url)
                     .delete()
                     .build();
             try(Response response = this.client.newCall(request).execute()) {
-                return response.message();
+                String message = response.message();
+                return message != null && message.equals("Accepted");
             } catch(IOException e) {
                 e.printStackTrace();
-                return null;
+                return false;
             }
         });
     }
@@ -202,11 +209,11 @@ public class SeaweedClient {
             builder.addInterceptor(chain -> {
                 Request request = chain.request();
                 long t1 = System.nanoTime();
-                System.out.println(String.format("Sending request %s on %s%n%s",
+                this.logger.log(Level.INFO, String.format("Sending request %s on %s%n%s",
                         request.url(), chain.connection(), request.headers()));
                 Response response = chain.proceed(request);
                 long t2 = System.nanoTime();
-                System.out.println(String.format("Received response for %s in %.1fms%n%s",
+                this.logger.log(Level.INFO, String.format("Received response for %s in %.1fms%n%s",
                         response.request().url(), (t2 - t1) / 1e6d, response.headers()));
                 return response;
             });
@@ -221,6 +228,7 @@ public class SeaweedClient {
         private boolean ssl = false;
         private int poolSize = Integer.MAX_VALUE;
         private boolean verbose = false;
+        private Logger logger = Logger.getLogger(SeaweedClient.class.getName());
 
         public Builder masterHost(String host) {
             this.masterHost = host;
@@ -247,9 +255,14 @@ public class SeaweedClient {
             return this;
         }
 
+        public Builder logger(Logger logger) {
+            this.logger = logger;
+            return this;
+        }
+
         public SeaweedClient build() {
             //TODO - throw exception if < 1 || host is null
-            return new SeaweedClient(this.masterHost, this.masterPort, this.ssl, this.poolSize, this.verbose);
+            return new SeaweedClient(this.masterHost, this.masterPort, this.ssl, this.poolSize, this.verbose, logger);
         }
     }
 }
