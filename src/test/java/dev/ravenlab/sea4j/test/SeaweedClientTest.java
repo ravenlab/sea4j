@@ -1,5 +1,6 @@
 package dev.ravenlab.sea4j.test;
 
+import dev.ravenlab.sea4j.Constant;
 import dev.ravenlab.sea4j.SeaweedClient;
 import dev.ravenlab.sea4j.response.FileResponse;
 import dev.ravenlab.sea4j.test.util.HashUtil;
@@ -18,9 +19,11 @@ public class SeaweedClientTest {
 
     private DockerComposeContainer container;
     private File testFile;
+    private SeaweedClient client;
 
     @Before
     public void setup() {
+        System.setProperty(Constant.DEBUG_KEY, "true");
         File composeFile = new File("src/test/resources/docker-compose.yml");
         this.container = new DockerComposeContainer(composeFile)
                 .withExposedService("master", 9333)
@@ -33,9 +36,16 @@ public class SeaweedClientTest {
                 }).withLogConsumer("master", (out) -> {
                     OutputFrame frame = (OutputFrame) out;
                     System.out.println("master: " + frame.getUtf8String());
-                });;
+                });
         this.container.start();
         this.testFile = new File("src/test/resources/test.txt");
+        String masterHost = this.container.getServiceHost("master", 9333);
+        int masterPort = this.container.getServicePort("master", 9333);
+        this.client = new SeaweedClient.Builder()
+                .masterHost(masterHost)
+                .masterPort(masterPort)
+                .verbose(true)
+                .build();
     }
 
     @After
@@ -44,25 +54,10 @@ public class SeaweedClientTest {
     }
 
     @Test
-    public void testConstruct() {
-        new SeaweedClient.Builder()
-                .masterHost("localhost")
-                .masterPort(9333)
-                .build();
-    }
-
-    @Test
     public void testWrite() {
-        String masterHost = this.container.getServiceHost("master", 9333);
-        int masterPort = this.container.getServicePort("master", 9333);
-        System.out.println(masterHost + " " + masterPort);
-        SeaweedClient client = new SeaweedClient.Builder()
-                .masterHost(masterHost)
-                .masterPort(masterPort)
-                .build();
         long size = this.testFile.length();
         try {
-            FileResponse response = client.writeFile(this.testFile).get();
+            FileResponse response = this.client.writeFile(this.testFile).get();
             assertEquals(response.getFileSize(), size);
         } catch(InterruptedException | ExecutionException e) {
             e.printStackTrace();
@@ -71,13 +66,9 @@ public class SeaweedClientTest {
 
     @Test
     public void testRead() {
-        SeaweedClient client = new SeaweedClient.Builder()
-                .masterHost("localhost")
-                .masterPort(9333)
-                .build();
         byte[] testFileHash = HashUtil.getMD5(this.testFile);
         try {
-            FileResponse response = client.writeFile(this.testFile).get();
+            FileResponse response = this.client.writeFile(this.testFile).get();
 
         } catch(InterruptedException |ExecutionException e) {
             e.printStackTrace();

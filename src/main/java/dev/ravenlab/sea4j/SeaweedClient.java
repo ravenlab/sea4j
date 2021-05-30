@@ -33,7 +33,7 @@ public class SeaweedClient {
     private final Gson gson;
     private final OkHttpClient client;
 
-    private SeaweedClient(String masterHost, int masterPort, boolean ssl, int poolSize) {
+    private SeaweedClient(String masterHost, int masterPort, boolean ssl, int poolSize, boolean verbose) {
         this.masterHost = masterHost;
         this.masterPort = masterPort;
         this.ssl = ssl;
@@ -41,22 +41,7 @@ public class SeaweedClient {
                 60L, TimeUnit.SECONDS,
                 new SynchronousQueue<>());
         this.gson = new Gson();
-        this.client = new OkHttpClient.Builder()
-        .addInterceptor(new Interceptor() {
-            @NotNull
-            @Override
-            public Response intercept(@NotNull Chain chain) throws IOException {
-                Request request = chain.request();
-                long t1 = System.nanoTime();
-                System.out.println(String.format("Sending request %s on %s%n%s",
-                        request.url(), chain.connection(), request.headers()));
-                Response response = chain.proceed(request);
-                long t2 = System.nanoTime();
-                System.out.println(String.format("Received response for %s in %.1fms%n%s",
-                        response.request().url(), (t2 - t1) / 1e6d, response.headers()));
-                return response;
-            }
-        }).build();
+        this.client = this.buildClient(verbose);
     }
 
     public CompletableFuture<byte[]> readFile(String fid) {
@@ -113,7 +98,7 @@ public class SeaweedClient {
     }
 
     private FileResponse sendFile(File file, String hostAndPort, String fid) {
-        String url = this.buildBaseString("localhost:8080") + "/" + fid;
+        String url = this.buildBaseString(hostAndPort) + "/" + fid;
         System.out.println(url);
 
         Request request = this.buildFileRequest(url, file);
@@ -192,6 +177,24 @@ public class SeaweedClient {
         return this.buildBaseString(host + ":" + port);
     }
 
+    private OkHttpClient buildClient(boolean verbose) {
+        OkHttpClient.Builder builder = new OkHttpClient.Builder();
+        if(verbose) {
+            builder.addInterceptor(chain -> {
+                Request request = chain.request();
+                long t1 = System.nanoTime();
+                System.out.println(String.format("Sending request %s on %s%n%s",
+                        request.url(), chain.connection(), request.headers()));
+                Response response = chain.proceed(request);
+                long t2 = System.nanoTime();
+                System.out.println(String.format("Received response for %s in %.1fms%n%s",
+                        response.request().url(), (t2 - t1) / 1e6d, response.headers()));
+                return response;
+            });
+        }
+        return builder.build();
+    }
+
     private String buildBaseString(String hostAndPort) {
         StringBuilder sb = new StringBuilder();
         String protocol = "http";
@@ -210,6 +213,7 @@ public class SeaweedClient {
         private int masterPort = -1;
         private boolean ssl = false;
         private int poolSize = Integer.MAX_VALUE;
+        private boolean verbose = false;
 
         public Builder masterHost(String host) {
             this.masterHost = host;
@@ -231,9 +235,14 @@ public class SeaweedClient {
             return this;
         }
 
+        public Builder verbose(boolean verbose) {
+            this.verbose = verbose;
+            return this;
+        }
+
         public SeaweedClient build() {
             //TODO - throw exception if < 1 || host is null
-            return new SeaweedClient(this.masterHost, this.masterPort, this.ssl, this.poolSize);
+            return new SeaweedClient(this.masterHost, this.masterPort, this.ssl, this.poolSize, this.verbose);
         }
     }
 }
