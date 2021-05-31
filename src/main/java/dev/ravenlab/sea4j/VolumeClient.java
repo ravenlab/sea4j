@@ -21,7 +21,7 @@ import java.util.logging.Logger;
 
 public class VolumeClient extends BaseUploadClient {
 
-    public VolumeClient(String host, int port, boolean ssl, boolean verbose, ExecutorService pool, Logger logger) {
+    protected VolumeClient(String host, int port, boolean ssl, boolean verbose, ExecutorService pool, Logger logger) {
         super(host, port, ssl, verbose, pool, logger);
     }
 
@@ -170,7 +170,7 @@ public class VolumeClient extends BaseUploadClient {
         private String masterHost = null;
         private int masterPort = -1;
 
-        public Builder(ExecutorService pool, Logger logger) {
+        protected Builder(ExecutorService pool, Logger logger) {
             super(pool, logger);
         }
 

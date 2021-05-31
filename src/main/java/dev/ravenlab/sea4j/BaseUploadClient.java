@@ -87,7 +87,7 @@ public abstract class BaseUploadClient {
         private boolean ssl;
         private boolean verbose;
 
-        public Builder(ExecutorService pool, Logger logger) {
+        protected Builder(ExecutorService pool, Logger logger) {
             this.pool = pool;
             this.logger = logger;
             this.ssl = false;
