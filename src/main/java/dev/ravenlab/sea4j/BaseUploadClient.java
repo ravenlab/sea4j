@@ -80,21 +80,43 @@ public abstract class BaseUploadClient {
         return sb.toString();
     }
 
-    public static class Builder {
+    public static class Builder<T extends Builder> {
 
         private final ExecutorService pool;
         private final Logger logger;
+        private boolean ssl;
+        private boolean verbose;
 
         public Builder(ExecutorService pool, Logger logger) {
             this.pool = pool;
             this.logger = logger;
+            this.ssl = false;
+            this.verbose = false;
         }
 
-        public ExecutorService getPool() {
+        public T ssl(boolean ssl) {
+            this.ssl =  ssl;
+            return (T) this;
+        }
+
+        public T verbose(boolean verbose) {
+            this.verbose = verbose;
+            return (T) this;
+        }
+
+        public boolean getSsl() {
+            return this.ssl;
+        }
+
+        public boolean getVerbose() {
+            return this.verbose;
+        }
+
+        protected ExecutorService getPool() {
             return this.pool;
         }
 
-        public Logger getLogger() {
+        protected Logger getLogger() {
             return this.logger;
         }
     }

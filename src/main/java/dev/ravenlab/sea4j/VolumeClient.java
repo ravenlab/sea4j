@@ -165,12 +165,10 @@ public class VolumeClient extends BaseUploadClient {
         }
     }
 
-    public static class Builder extends BaseUploadClient.Builder {
+    public static class Builder extends BaseUploadClient.Builder<Builder> {
 
         private String masterHost = null;
         private int masterPort = -1;
-        private boolean ssl = false;
-        private boolean verbose = false;
 
         public Builder(ExecutorService pool, Logger logger) {
             super(pool, logger);
@@ -186,19 +184,9 @@ public class VolumeClient extends BaseUploadClient {
             return this;
         }
 
-        public Builder ssl(boolean ssl) {
-            this.ssl =  ssl;
-            return this;
-        }
-
-        public Builder verbose(boolean verbose) {
-            this.verbose = verbose;
-            return this;
-        }
-
         public VolumeClient build() {
             return new VolumeClient(this.masterHost, this.masterPort,
-                    this.ssl, this.verbose,
+                    this.getSsl(), this.getVerbose(),
                     this.getPool(), this.getLogger());
         }
     }
