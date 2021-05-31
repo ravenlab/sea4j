@@ -11,8 +11,8 @@ public class SeaweedClient {
     private final ExecutorService pool;
     private final Logger logger;
 
-    private SeaweedClient(int maxPoolSize, Logger logger) {
-        this.pool = new ThreadPoolExecutor(0, maxPoolSize,
+    private SeaweedClient(int idlePoolSize, int maxPoolSize, Logger logger) {
+        this.pool = new ThreadPoolExecutor(idlePoolSize, maxPoolSize,
                 60L, TimeUnit.SECONDS,
                 new SynchronousQueue<>());
         this.logger = logger;
@@ -24,11 +24,17 @@ public class SeaweedClient {
 
     public static class Builder {
 
-        private int poolSize = Integer.MAX_VALUE;
+        private int idlePoolSize = 0;
+        private int maxPoolSize = Integer.MAX_VALUE;
         private Logger logger = Logger.getLogger(SeaweedClient.class.getName());
 
-        public Builder poolSize(int poolSize) {
-            this.poolSize = poolSize;
+        public Builder idlePoolSize(int poolSize) {
+            this.idlePoolSize = poolSize;
+            return this;
+        }
+
+        public Builder maxPoolSize(int poolSize) {
+            this.maxPoolSize = poolSize;
             return this;
         }
 
@@ -38,7 +44,7 @@ public class SeaweedClient {
         }
 
         public SeaweedClient build() {
-            return new SeaweedClient(this.poolSize, this.logger);
+            return new SeaweedClient(this.idlePoolSize, this.maxPoolSize, this.logger);
         }
     }
 }
