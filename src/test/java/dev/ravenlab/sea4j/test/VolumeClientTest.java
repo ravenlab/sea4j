@@ -14,13 +14,14 @@ import org.testcontainers.containers.output.OutputFrame;
 import java.io.File;
 import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
+import java.util.logging.Logger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-public class SeaweedVolumeTest {
+public class VolumeClientTest {
 
     private DockerComposeContainer container;
     private File testFile;
@@ -49,6 +50,7 @@ public class SeaweedVolumeTest {
         String masterHost = this.container.getServiceHost("master", 9333);
         int masterPort = this.container.getServicePort("master", 9333);
         this.volumeClient = new SeaweedClient.Builder()
+                .logger(Logger.getLogger(this.getClass().getName()))
                 .build()
                 .volumeBuilder()
                 .masterHost(masterHost)
