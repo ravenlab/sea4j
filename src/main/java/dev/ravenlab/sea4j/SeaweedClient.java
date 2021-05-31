@@ -22,6 +22,10 @@ public class SeaweedClient {
         return new VolumeClient.Builder(this.pool, this.logger);
     }
 
+    public FilerClient.Builder filerBuilder() {
+        return new FilerClient.Builder(this.pool, this.logger);
+    }
+
     public static class Builder {
 
         private int idlePoolSize = 0;
