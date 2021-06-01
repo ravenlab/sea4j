@@ -116,7 +116,7 @@ public class VolumeClientTest {
     @Test
     public void testReadNoFile() {
         try {
-            assertFalse(this.volumeClient.readFile("3,017e84ad0d").get().getExists());
+            assertNull(this.volumeClient.readFile("3,017e84ad0d").get());
         } catch(InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }

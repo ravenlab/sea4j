@@ -29,7 +29,7 @@ public class VolumeClient extends BaseUploadClient {
         return CompletableFuture.supplyAsync(() -> {
             VolumeLookupResponse lookup = this.lookupVolume(fid);
             if(lookup == null) {
-                return new ReadFileResponse();
+                return null;
             }
             String url = this.buildBaseString(lookup.getUrl()) + "/" + fid;
             Request request = new Request.Builder()
@@ -42,7 +42,7 @@ public class VolumeClient extends BaseUploadClient {
                 return new ReadFileResponse(body);
             } catch(IOException | NullPointerException e) {
                 e.printStackTrace();
-                return new ReadFileResponse();
+                return null;
             }
         }, this.getPool());
     }
