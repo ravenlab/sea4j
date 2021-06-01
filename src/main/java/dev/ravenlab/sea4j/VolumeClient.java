@@ -186,8 +186,8 @@ public class VolumeClient extends BaseUploadClient {
 
         public VolumeClient build() {
             return new VolumeClient(this.masterHost, this.masterPort,
-                    this.getSsl(), this.getVerbose(),
-                    this.getPool(), this.getLogger());
+                    this.ssl, this.verbose,
+                    this.pool, this.logger);
         }
     }
 }

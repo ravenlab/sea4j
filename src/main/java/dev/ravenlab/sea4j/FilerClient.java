@@ -30,8 +30,8 @@ public class FilerClient extends BaseUploadClient {
 
         public FilerClient build() {
             return new FilerClient(this.filerHost, this.filerPort,
-                    this.getSsl(), this.getVerbose(),
-                    this.getPool(), this.getLogger());
+                    this.ssl, this.verbose,
+                    this.pool, this.logger);
         }
     }
 }

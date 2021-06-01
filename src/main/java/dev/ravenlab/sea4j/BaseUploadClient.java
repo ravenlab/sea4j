@@ -82,10 +82,10 @@ public abstract class BaseUploadClient {
 
     public static class Builder<T extends Builder> {
 
-        private final ExecutorService pool;
-        private final Logger logger;
-        private boolean ssl;
-        private boolean verbose;
+        protected final ExecutorService pool;
+        protected final Logger logger;
+        protected boolean ssl;
+        protected boolean verbose;
 
         protected Builder(ExecutorService pool, Logger logger) {
             this.pool = pool;
@@ -102,22 +102,6 @@ public abstract class BaseUploadClient {
         public T verbose(boolean verbose) {
             this.verbose = verbose;
             return (T) this;
-        }
-
-        public boolean getSsl() {
-            return this.ssl;
-        }
-
-        public boolean getVerbose() {
-            return this.verbose;
-        }
-
-        protected ExecutorService getPool() {
-            return this.pool;
-        }
-
-        protected Logger getLogger() {
-            return this.logger;
         }
     }
 }
