@@ -3,7 +3,7 @@ package dev.ravenlab.sea4j.test;
 import dev.ravenlab.sea4j.Constant;
 import dev.ravenlab.sea4j.SeaweedClient;
 import dev.ravenlab.sea4j.VolumeClient;
-import dev.ravenlab.sea4j.response.FileWrittenResponse;
+import dev.ravenlab.sea4j.response.volume.FileWrittenResponse;
 import dev.ravenlab.sea4j.test.util.HashUtil;
 import org.junit.After;
 import org.junit.Before;

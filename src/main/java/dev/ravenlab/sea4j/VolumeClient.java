@@ -1,10 +1,10 @@
 package dev.ravenlab.sea4j;
 
 import com.google.gson.JsonObject;
-import dev.ravenlab.sea4j.response.FidResponse;
-import dev.ravenlab.sea4j.response.FileWrittenResponse;
-import dev.ravenlab.sea4j.response.ReadFileResponse;
-import dev.ravenlab.sea4j.response.VolumeLookupResponse;
+import dev.ravenlab.sea4j.response.volume.FidResponse;
+import dev.ravenlab.sea4j.response.volume.FileWrittenResponse;
+import dev.ravenlab.sea4j.response.volume.ReadFileResponse;
+import dev.ravenlab.sea4j.response.volume.VolumeLookupResponse;
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
 import okhttp3.Request;

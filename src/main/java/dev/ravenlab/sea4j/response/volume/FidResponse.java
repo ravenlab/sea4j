@@ -1,4 +1,4 @@
-package dev.ravenlab.sea4j.response;
+package dev.ravenlab.sea4j.response.volume;
 
 public class FidResponse {
 
