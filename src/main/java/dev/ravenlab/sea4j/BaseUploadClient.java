@@ -17,25 +17,19 @@ public abstract class BaseUploadClient {
     private final boolean ssl;
     private final Gson gson;
     private final OkHttpClient client;
-    private final ExecutorService pool;
     private final Logger logger;
 
-    public BaseUploadClient(String host, int port, boolean ssl, boolean verbose, ExecutorService pool, Logger logger) {
+    public BaseUploadClient(String host, int port, boolean ssl, boolean verbose, Logger logger) {
         this.masterHost = host;
         this.masterPort = port;
         this.ssl = ssl;
         this.gson = new Gson();
         this.client = this.buildClient(verbose);
-        this.pool = pool;
         this.logger = logger;
     }
 
     protected OkHttpClient getClient() {
         return this.client;
-    }
-
-    protected ExecutorService getPool() {
-        return this.pool;
     }
 
     protected Gson getGson() {
@@ -82,13 +76,11 @@ public abstract class BaseUploadClient {
 
     public static class Builder<T extends Builder> {
 
-        protected final ExecutorService pool;
         protected final Logger logger;
         protected boolean ssl;
         protected boolean verbose;
 
-        protected Builder(ExecutorService pool, Logger logger) {
-            this.pool = pool;
+        protected Builder(Logger logger) {
             this.logger = logger;
             this.ssl = false;
             this.verbose = false;

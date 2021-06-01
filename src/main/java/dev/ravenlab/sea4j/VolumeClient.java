@@ -10,82 +10,73 @@ import okhttp3.MultipartBody;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import okhttp3.ResponseBody;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
 import java.util.logging.Logger;
 
 public class VolumeClient extends BaseUploadClient {
 
-    protected VolumeClient(String host, int port, boolean ssl, boolean verbose, ExecutorService pool, Logger logger) {
-        super(host, port, ssl, verbose, pool, logger);
+    protected VolumeClient(String host, int port, boolean ssl, boolean verbose, Logger logger) {
+        super(host, port, ssl, verbose, logger);
     }
 
-    public CompletableFuture<ReadFileResponse> readFile(String fid) {
-        return CompletableFuture.supplyAsync(() -> {
-            VolumeLookupResponse lookup = this.lookupVolume(fid);
-            if(lookup == null) {
+    public ReadFileResponse readFile(String fid) throws IOException {
+        VolumeLookupResponse lookup = this.lookupVolume(fid);
+        if(lookup == null) {
+            return null;
+        }
+        String url = this.buildBaseString(lookup.getUrl()) + "/" + fid;
+        Request request = new Request.Builder()
+                .url(url)
+                .get()
+                .build();
+        try(Response response = this.getClient().newCall(request).execute()) {
+            ResponseBody body = response.body();
+            if(body == null) {
                 return null;
             }
-            String url = this.buildBaseString(lookup.getUrl()) + "/" + fid;
-            Request request = new Request.Builder()
-                    .url(url)
-                    .get()
-                    .build();
-            try(Response response = this.getClient().newCall(request).execute()) {
-                byte[] body = Objects.requireNonNull(response.body()).bytes();
-                System.out.println("body: " + Arrays.toString(body));
-                return new ReadFileResponse(body);
-            } catch(IOException | NullPointerException e) {
-                e.printStackTrace();
-                return null;
-            }
-        }, this.getPool());
+
+
+            byte[] bodyBytes = body.bytes();
+            System.out.println("body: " + Arrays.toString(bodyBytes));
+            return new ReadFileResponse(bodyBytes);
+        }
     }
 
-    public CompletableFuture<FileWrittenResponse> writeFile(File file) {
-        return CompletableFuture.supplyAsync(() -> {
-            FidResponse fid = this.createFid();
-            if(fid == null) {
-                return null;
-            }
-            return this.sendFile(file, fid.getUrl(), fid.getFid());
-        }, this.getPool());
+    public FileWrittenResponse writeFile(File file) throws IOException {
+        FidResponse fid = this.createFid();
+        if(fid == null) {
+            return null;
+        }
+        return this.sendFile(file, fid.getUrl(), fid.getFid());
     }
 
-    public CompletableFuture<FileWrittenResponse> updateFile(File file, String fid) {
-        return CompletableFuture.supplyAsync(() -> {
-            VolumeLookupResponse lookup = this.lookupVolume(fid);
-            if(lookup == null) {
-                return null;
-            }
-            return this.sendFile(file, lookup.getUrl(), fid);
-        });
+    public FileWrittenResponse updateFile(File file, String fid) throws IOException {
+        VolumeLookupResponse lookup = this.lookupVolume(fid);
+        if(lookup == null) {
+            return null;
+        }
+        return this.sendFile(file, lookup.getUrl(), fid);
     }
 
-    public CompletableFuture<Boolean> deleteFile(String fid) {
-        return CompletableFuture.supplyAsync(() -> {
-            VolumeLookupResponse lookup = this.lookupVolume(fid);
-            if(lookup == null) {
-                return false;
-            }
-            String url = this.buildBaseString(lookup.getUrl()) + "/" + fid;
-            Request request = new Request.Builder()
-                    .url(url)
-                    .delete()
-                    .build();
-            try(Response response = this.getClient().newCall(request).execute()) {
-                String message = response.message();
-                return message != null && message.equals("Accepted");
-            } catch(IOException e) {
-                e.printStackTrace();
-                return false;
-            }
-        });
+    public Boolean deleteFile(String fid) throws IOException {
+        VolumeLookupResponse lookup = this.lookupVolume(fid);
+        if(lookup == null) {
+            return false;
+        }
+        String url = this.buildBaseString(lookup.getUrl()) + "/" + fid;
+        Request request = new Request.Builder()
+                .url(url)
+                .delete()
+                .build();
+        try(Response response = this.getClient().newCall(request).execute()) {
+            String message = response.message();
+            return message != null && message.equals("Accepted");
+        }
     }
 
     private FileWrittenResponse sendFile(File file, String hostAndPort, String fid) {
@@ -109,31 +100,40 @@ public class VolumeClient extends BaseUploadClient {
         }
     }
 
-    private VolumeLookupResponse lookupVolume(String fid) {
+    private VolumeLookupResponse lookupVolume(String fid) throws IOException {
         if(fid == null) {
             return null;
         } else if(!fid.contains(",")) {
             return null;
         }
         String[] split = fid.split(",");
+        int volumeId = -1;
         try {
-            int volumeId = Integer.parseInt(split[0]);
-            String reqUrl = this.buildMasterString() + "/dir/lookup?volumeId=" + volumeId;
-            Request request = new Request.Builder()
-                    .url(reqUrl)
-                    .get()
-                    .build();
-            try(Response response = this.getClient().newCall(request).execute()) {
-                String json = Objects.requireNonNull(response.body()).string();
-                System.out.println("lookup volume: " + json);
-                JsonObject obj = this.getGson().fromJson(json, JsonObject.class);
-                int lookupId = obj.get("volumeId").getAsInt();
-                JsonObject locations = obj.get("locations").getAsJsonArray().get(0).getAsJsonObject();
-                String url = locations.get("url").getAsString();
-                return new VolumeLookupResponse(lookupId, url);
-            }
-        } catch(NumberFormatException | IOException | NullPointerException ex) {
+            volumeId = Integer.parseInt(split[0]);
+        } catch(NumberFormatException ex) {
+            ex.printStackTrace();
             return null;
+        }
+        String reqUrl = this.buildMasterString() + "/dir/lookup?volumeId=" + volumeId;
+        Request request = new Request.Builder()
+                .url(reqUrl)
+                .get()
+                .build();
+        try(Response response = this.getClient().newCall(request).execute()) {
+            ResponseBody body = response.body();
+            if(body == null) {
+                return null;
+            }
+            String json = body.string();
+            System.out.println("lookup volume: " + json);
+            JsonObject obj = this.getGson().fromJson(json, JsonObject.class);
+            if(obj.has("error")) {
+                return null;
+            }
+            int lookupId = obj.get("volumeId").getAsInt();
+            JsonObject locations = obj.get("locations").getAsJsonArray().get(0).getAsJsonObject();
+            String url = locations.get("url").getAsString();
+            return new VolumeLookupResponse(lookupId, url);
         }
     }
 
@@ -149,19 +149,17 @@ public class VolumeClient extends BaseUploadClient {
                 .build();
     }
 
-    private FidResponse createFid() {
+    private FidResponse createFid() throws IOException {
         String url = this.buildMasterString() + "/dir/assign";
         Request request = new Request.Builder()
                 .url(url)
                 .get()
                 .build();
-        try(Response response = this.getClient().newCall(request).execute()){
-            String json = Objects.requireNonNull(response.body()).string();
+        try(Response response = this.getClient().newCall(request).execute()) {
+            ResponseBody body = response.body();
+            String json = body.string();
             System.out.println("json: " + json);
             return this.getGson().fromJson(json, FidResponse.class);
-        } catch(IOException | NullPointerException e) {
-            e.printStackTrace();
-            return null;
         }
     }
 
@@ -170,8 +168,8 @@ public class VolumeClient extends BaseUploadClient {
         private String masterHost = null;
         private int masterPort = -1;
 
-        protected Builder(ExecutorService pool, Logger logger) {
-            super(pool, logger);
+        protected Builder(Logger logger) {
+            super(logger);
         }
 
         public Builder masterHost(String host) {
@@ -186,8 +184,7 @@ public class VolumeClient extends BaseUploadClient {
 
         public VolumeClient build() {
             return new VolumeClient(this.masterHost, this.masterPort,
-                    this.ssl, this.verbose,
-                    this.pool, this.logger);
+                    this.ssl, this.verbose, this.logger);
         }
     }
 }

@@ -12,6 +12,7 @@ import org.testcontainers.containers.DockerComposeContainer;
 import org.testcontainers.containers.output.OutputFrame;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
@@ -68,9 +69,9 @@ public class VolumeClientTest {
     public void testWrite() {
         long size = this.testFile.length();
         try {
-            FileWrittenResponse response = this.volumeClient.writeFile(this.testFile).get();
+            FileWrittenResponse response = this.volumeClient.writeFile(this.testFile);
             assertEquals(response.getFileSize(), size);
-        } catch(InterruptedException | ExecutionException e) {
+        } catch(IOException e) {
             e.printStackTrace();
         }
     }
@@ -81,13 +82,13 @@ public class VolumeClientTest {
         int chars = 10;
         byte[] starFileHash = HashUtil.getMD5(this.starTestFile);
         try {
-            FileWrittenResponse response = this.volumeClient.writeFile(this.testFile).get();
+            FileWrittenResponse response = this.volumeClient.writeFile(this.testFile);
             String fid = response.getFid();
             assertEquals(response.getFileSize(), originalSize);
-            assertEquals(chars, this.volumeClient.updateFile(this.starTestFile, fid).get().getFileSize());
-            byte[] retrievedHash = HashUtil.getMD5(this.volumeClient.readFile(fid).get().getData());
+            assertEquals(chars, this.volumeClient.updateFile(this.starTestFile, fid).getFileSize());
+            byte[] retrievedHash = HashUtil.getMD5(this.volumeClient.readFile(fid).getData());
             assertTrue(Arrays.equals(starFileHash, retrievedHash));
-        } catch(InterruptedException | ExecutionException e) {
+        } catch(IOException e) {
             e.printStackTrace();
         }
     }
@@ -95,8 +96,8 @@ public class VolumeClientTest {
     @Test
     public void testUpdateFileNullVolume() {
         try {
-            assertNull(this.volumeClient.updateFile(this.starTestFile, null).get());
-        } catch(InterruptedException | ExecutionException e) {
+            assertNull(this.volumeClient.updateFile(this.starTestFile, null));
+        } catch(IOException e) {
             e.printStackTrace();
         }
     }
@@ -105,10 +106,10 @@ public class VolumeClientTest {
     public void testRead() {
         byte[] testFileHash = HashUtil.getMD5(this.testFile);
         try {
-            FileWrittenResponse response = this.volumeClient.writeFile(this.testFile).get();
-            byte[] readHash = HashUtil.getMD5(this.volumeClient.readFile(response.getFid()).get().getData());
+            FileWrittenResponse response = this.volumeClient.writeFile(this.testFile);
+            byte[] readHash = HashUtil.getMD5(this.volumeClient.readFile(response.getFid()).getData());
             assertTrue(Arrays.equals(testFileHash, readHash));
-        } catch(InterruptedException | ExecutionException e) {
+        } catch(IOException e) {
             e.printStackTrace();
         }
     }
@@ -116,8 +117,8 @@ public class VolumeClientTest {
     @Test
     public void testReadNoFile() {
         try {
-            assertNull(this.volumeClient.readFile("3,017e84ad0d").get());
-        } catch(InterruptedException | ExecutionException e) {
+            assertNull(this.volumeClient.readFile("3,017e84ad0d"));
+        } catch(IOException e) {
             e.printStackTrace();
         }
     }
@@ -126,12 +127,12 @@ public class VolumeClientTest {
     public void testDelete() {
         byte[] testFileHash = HashUtil.getMD5(this.testFile);
         try {
-            FileWrittenResponse updatedResponse = this.volumeClient.writeFile(this.testFile).get();
+            FileWrittenResponse updatedResponse = this.volumeClient.writeFile(this.testFile);
             String fid = updatedResponse.getFid();
-            byte[] readHash = HashUtil.getMD5(this.volumeClient.readFile(fid).get().getData());
+            byte[] readHash = HashUtil.getMD5(this.volumeClient.readFile(fid).getData());
             assertTrue(Arrays.equals(testFileHash, readHash));
-            assertTrue(this.volumeClient.deleteFile(fid).get());
-        } catch(InterruptedException | ExecutionException e) {
+            assertTrue(this.volumeClient.deleteFile(fid));
+        } catch(IOException e) {
             e.printStackTrace();
         }
     }
@@ -139,8 +140,8 @@ public class VolumeClientTest {
     @Test
     public void testDeleteNoFile() {
         try {
-            assertFalse(this.volumeClient.deleteFile("3,017e84ad0d").get());
-        } catch(InterruptedException | ExecutionException e) {
+            assertFalse(this.volumeClient.deleteFile("3,017e84ad0d"));
+        } catch(IOException e) {
             e.printStackTrace();
         }
     }
