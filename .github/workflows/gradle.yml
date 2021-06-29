@@ -19,4 +19,5 @@ jobs:
           -v "$PWD:$PWD" \
           -w "$PWD" \
           openjdk:8-jdk-alpine \
+          chmod +x gradlew \
           ./gradlew test
