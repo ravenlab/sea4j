@@ -10,15 +10,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: Run docker
-      run: sudo service docker restart
     - uses: actions/checkout@v2
-    - name: Set up JDK 8
-      uses: actions/setup-java@v2
-      with:
-        java-version: '8'
-        distribution: 'adopt'
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-    - name: Test with Gradle
-      run: ./gradlew test
+    - name: Build
+      run: |
+        docker run -i --rm \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          -v "$HOME:$HOME" \
+          -v "$PWD:$PWD" \
+          -w "$PWD" \
+          openjdk:8-jdk-alpine \
+          ./gradlew test
