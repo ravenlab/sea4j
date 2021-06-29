@@ -13,11 +13,11 @@ jobs:
     - uses: actions/checkout@v2
     - name: Build
       run: |
+        chmod +x gradlew \
         docker run -i --rm \
-          -v /var/run/docker.sock:/var/run/docker.sock \
-          -v "$HOME:$HOME" \
-          -v "$PWD:$PWD" \
-          -w "$PWD" \
-          openjdk:8-jdk-alpine \
-          chmod +x gradlew \
-          ./gradlew test
+        -v /var/run/docker.sock:/var/run/docker.sock \
+        -v "$HOME:$HOME" \
+        -v "$PWD:$PWD" \
+        -w "$PWD" \
+        openjdk:8-jdk-alpine \
+        ./gradlew test
