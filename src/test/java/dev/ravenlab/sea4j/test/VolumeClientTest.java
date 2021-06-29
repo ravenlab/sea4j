@@ -68,7 +68,9 @@ public class VolumeClientTest {
 
     @After
     public void shutdown() {
-        this.container.stop();
+        if(this.container != null) {
+            this.container.stop();
+        }
     }
 
     @Test
