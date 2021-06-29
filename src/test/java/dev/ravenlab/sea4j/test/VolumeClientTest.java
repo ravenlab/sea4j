@@ -40,12 +40,12 @@ public class VolumeClientTest {
         this.testFile = new File(resourceFolder, "test.txt");
         this.starTestFile = new File(resourceFolder, "star-test.txt");
         if(this.composeFile.exists()) {
-            this.container = new DockerComposeContainer(this.composeFile)
-                    .withExposedService("master", 9333)
+            this.container = new DockerComposeContainer(this.composeFile);
+            this.container = this.container.withExposedService("master", 9333)
                     .withExposedService("master", 19333)
                     .withExposedService("volume", 8080)
-                    .withExposedService("volume", 18080)
-                    .withLogConsumer("volume", (out) -> {
+                    .withExposedService("volume", 18080);
+            this.container = this.container.withLogConsumer("volume", (out) -> {
                         OutputFrame frame = (OutputFrame) out;
                         System.out.println("volume: " + frame.getUtf8String());
                     }).withLogConsumer("master", (out) -> {
