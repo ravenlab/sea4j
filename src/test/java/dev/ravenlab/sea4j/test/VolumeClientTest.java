@@ -74,11 +74,6 @@ public class VolumeClientTest {
     }
 
     @Test
-    public void testComposeFileExists() {
-        assertTrue(this.composeFile.exists());
-    }
-
-    @Test
     public void testWrite() {
         long size = this.testFile.length();
         try {
