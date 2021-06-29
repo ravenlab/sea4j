@@ -24,6 +24,7 @@ import static org.junit.Assert.assertTrue;
 
 public class VolumeClientTest {
 
+    private File composeFile;
     private DockerComposeContainer container;
     private File testFile;
     private File starTestFile;
@@ -32,37 +33,47 @@ public class VolumeClientTest {
     @Before
     public void setup() {
         System.setProperty(Constant.DEBUG_KEY, "true");
-        File composeFile = new File("src/test/resources/docker-compose.yml");
-        this.container = new DockerComposeContainer(composeFile)
-                .withExposedService("master", 9333)
-                .withExposedService("master", 19333)
-                .withExposedService("volume", 8080)
-                .withExposedService("volume", 18080)
-                .withLogConsumer("volume", (out) -> {
-                    OutputFrame frame = (OutputFrame) out;
-                    System.out.println("volume: " + frame.getUtf8String());
-                }).withLogConsumer("master", (out) -> {
-                    OutputFrame frame = (OutputFrame) out;
-                    System.out.println("master: " + frame.getUtf8String());
-                });
-        this.container.start();
-        this.testFile = new File("src/test/resources/test.txt");
-        this.starTestFile = new File("src/test/resources/star-test.txt");
-        String masterHost = this.container.getServiceHost("master", 9333);
-        int masterPort = this.container.getServicePort("master", 9333);
-        this.volumeClient = new SeaweedClient.Builder()
-                .logger(Logger.getLogger(this.getClass().getName()))
-                .build()
-                .volumeBuilder()
-                .masterHost(masterHost)
-                .masterPort(masterPort)
-                .verbose(true)
-                .build();
+        File srcFolder = new File("src");
+        File testFolder = new File(srcFolder, "test");
+        File resourceFolder = new File(testFolder, "resources");
+        this.composeFile = new File(resourceFolder, "docker-compose.yml");
+        this.testFile = new File(resourceFolder, "test.txt");
+        this.starTestFile = new File(resourceFolder, "star-test.txt");
+        if(this.composeFile.exists()) {
+            this.container = new DockerComposeContainer(this.composeFile)
+                    .withExposedService("master", 9333)
+                    .withExposedService("master", 19333)
+                    .withExposedService("volume", 8080)
+                    .withExposedService("volume", 18080)
+                    .withLogConsumer("volume", (out) -> {
+                        OutputFrame frame = (OutputFrame) out;
+                        System.out.println("volume: " + frame.getUtf8String());
+                    }).withLogConsumer("master", (out) -> {
+                        OutputFrame frame = (OutputFrame) out;
+                        System.out.println("master: " + frame.getUtf8String());
+                    });
+            this.container.start();
+            String masterHost = this.container.getServiceHost("master", 9333);
+            int masterPort = this.container.getServicePort("master", 9333);
+            this.volumeClient = new SeaweedClient.Builder()
+                    .logger(Logger.getLogger(this.getClass().getName()))
+                    .build()
+                    .volumeBuilder()
+                    .masterHost(masterHost)
+                    .masterPort(masterPort)
+                    .verbose(true)
+                    .build();
+        }
     }
 
     @After
     public void shutdown() {
         this.container.stop();
+    }
+
+    @Test
+    public void testComposeFileExists() {
+        assertTrue(this.composeFile.exists());
     }
 
     @Test
