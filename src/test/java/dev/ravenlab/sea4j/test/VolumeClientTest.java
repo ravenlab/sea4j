@@ -7,6 +7,7 @@ import dev.ravenlab.sea4j.response.volume.FileWrittenResponse;
 import dev.ravenlab.sea4j.test.util.HashUtil;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.testcontainers.containers.DockerComposeContainer;
 import org.testcontainers.containers.output.OutputFrame;
@@ -25,7 +26,8 @@ import static org.junit.Assert.assertTrue;
 public class VolumeClientTest {
 
     private File composeFile;
-    private DockerComposeContainer container;
+    @Rule
+    public DockerComposeContainer container;
     private File testFile;
     private File starTestFile;
     private VolumeClient volumeClient;
