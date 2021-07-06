@@ -4,4 +4,8 @@
 [![](https://jitpack.io/v/ravenlab/sea4j.svg)](https://jitpack.io/#ravenlab/sea4j)
 
 
-A seaweedfs client written in Java
+A [seaweedfs](https://github.com/chrislusf/seaweedfs) client written in Java
+
+## Using
+
+//TODO
